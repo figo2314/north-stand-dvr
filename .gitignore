@@ -1,0 +1,11 @@
+node_modules/
+recordings/
+data/db.json
+data/*.tmp
+test-results/
+playwright-report/
+radar-*.png
+*-check*.png
+*-home*.png
+*.log
+.DS_Store

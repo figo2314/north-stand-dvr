@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172039" />
+    <title>比赛雷达 · 北看台</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/mockup.css" />
+  </head>
+  <body>
+    <div class="mock-shell">
+      <header class="mock-header">
+        <a class="mock-brand" href="/">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40">
+              <path d="M20 4 35 11v9c0 8.4-6.1 14.1-15 17-8.9-2.9-15-8.6-15-17v-9L20 4Z" />
+              <path d="m13 27 7-15 7 15h-4.2l-1.2-3h-3.4l-1.1 3H13Zm6.2-6h1.8L20 17.8 19.2 21Z" />
+            </svg>
+          </span>
+          <span>
+            <strong>北看台</strong>
+            <small>比赛雷达</small>
+          </span>
+        </a>
+        <nav>
+          <a href="/#home">待看录像</a>
+          <a href="/#schedule">录制日程</a>
+          <a class="is-active" href="/mockup.html">比赛雷达</a>
+        </nav>
+        <span class="mock-source-state" data-source-state>
+          <i data-lucide="loader-circle"></i>
+          正在读取直播源
+        </span>
+      </header>
+
+      <main class="mock-main">
+        <section class="radar-hero">
+          <img
+            src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1800&q=84"
+            alt=""
+          />
+          <div class="radar-hero__veil"></div>
+          <div class="radar-hero__content">
+            <p class="day-line">M3U 实时赛程</p>
+            <h1 data-hero-title>正在检查今天的比赛…</h1>
+            <p data-hero-copy>
+              我会把正在进行和即将开球的比赛放在前面，赛果继续隐藏。
+            </p>
+            <div class="radar-summary">
+              <div>
+                <strong data-live-count>0</strong>
+                <span>正在直播</span>
+              </div>
+              <div>
+                <strong data-upcoming-count>0</strong>
+                <span>即将开始</span>
+              </div>
+              <div>
+                <strong data-source-count>0</strong>
+                <span>源站频道</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="radar-layout">
+          <section class="radar-main" aria-labelledby="radar-list-title">
+            <div class="radar-heading">
+              <div>
+                <h2 id="radar-list-title">比赛时间线</h2>
+                <p>按开球时间排序，未开赛优先，录像不会显示比分。</p>
+              </div>
+              <button class="text-button" type="button" data-refresh>
+                <i data-lucide="refresh-cw"></i>
+                刷新源
+              </button>
+            </div>
+            <div class="radar-list" data-match-list>
+              <div class="skeleton-row radar-skeleton">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="radar-side">
+            <section class="radar-side__panel">
+              <div class="support-heading">
+                <span class="section-icon"><i data-lucide="shield-check"></i></span>
+                <div>
+                  <h2>无剧透策略</h2>
+                  <p>与录像库共用保护策略</p>
+                </div>
+              </div>
+              <ul class="radar-rules">
+                <li><i data-lucide="check"></i>比赛标题不显示比分</li>
+                <li><i data-lucide="check"></i>播放器默认遮住比分条</li>
+                <li><i data-lucide="check"></i>赛后手动揭晓赛果</li>
+              </ul>
+            </section>
+
+            <section class="radar-side__panel">
+              <div class="support-heading">
+                <span class="section-icon section-icon--amber">
+                  <i data-lucide="route"></i>
+                </span>
+                <div>
+                  <h2>自动录制建议</h2>
+                  <p>直播预约与回放录制</p>
+                </div>
+              </div>
+              <dl class="status-list radar-rules">
+                <div>
+                  <dt>普通联赛</dt>
+                  <dd>150 分钟</dd>
+                </div>
+                <div>
+                  <dt>国内杯赛</dt>
+                  <dd>180 分钟</dd>
+                </div>
+                <div>
+                  <dt>淘汰赛 / 加时</dt>
+                  <dd>210 分钟</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="radar-side__note">
+              <i data-lucide="info"></i>
+              <p>已结束的条目可直接录制回放，完成后进入待看录像。</p>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast-region" data-toast-region aria-live="polite"></div>
+    <script src="/vendor/lucide.js"></script>
+    <script src="/mockup.js"></script>
+  </body>
+</html>

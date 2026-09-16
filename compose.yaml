@@ -1,0 +1,14 @@
+services:
+  north-stand-dvr:
+    build: .
+    container_name: north-stand-dvr
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4173
+      TZ: Asia/Shanghai
+    ports:
+      - "4173:4173"
+    volumes:
+      - ./data:/app/data
+      - ./recordings:/app/recordings

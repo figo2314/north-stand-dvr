@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172039" />
+    <meta name="description" content="本地优先、默认隐藏比分与赛果的足球录像台。" />
+    <title>北看台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="night-rail" aria-label="主导航">
+        <a class="brand" href="#home" aria-label="北看台首页">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" role="img">
+              <path d="M20 4 35 11v9c0 8.4-6.1 14.1-15 17-8.9-2.9-15-8.6-15-17v-9L20 4Z" />
+              <path d="m13 27 7-15 7 15h-4.2l-1.2-3h-3.4l-1.1 3H13Zm6.2-6h1.8L20 17.8 19.2 21Z" />
+            </svg>
+          </span>
+          <span>
+            <strong data-display-name>北看台</strong>
+            <small>无剧透录像台</small>
+          </span>
+        </a>
+
+        <nav class="rail-nav">
+          <button class="nav-item is-active" type="button" data-view="home">
+            <i data-lucide="library-big"></i>
+            <span>待看录像</span>
+          </button>
+          <button class="nav-item" type="button" data-view="schedule">
+            <i data-lucide="calendar-clock"></i>
+            <span>录制日程</span>
+          </button>
+          <a class="nav-item" href="/mockup.html">
+            <i data-lucide="radar"></i>
+            <span>比赛雷达</span>
+          </a>
+          <button class="nav-item" type="button" data-view="settings">
+            <i data-lucide="sliders-horizontal"></i>
+            <span>遮罩与设置</span>
+          </button>
+        </nav>
+
+        <div class="rail-foot">
+          <div class="overnight-status" data-rail-status>
+            <span class="status-beacon" aria-hidden="true"></span>
+            <span>
+              <small>今晚录制</small>
+              <strong>等待检查</strong>
+            </span>
+          </div>
+          <p>关闭比分提示，保留比赛本身。</p>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="mobile-bar">
+          <a class="brand brand--compact" href="#home">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 40 40">
+                <path d="M20 4 35 11v9c0 8.4-6.1 14.1-15 17-8.9-2.9-15-8.6-15-17v-9L20 4Z" />
+                <path d="m13 27 7-15 7 15h-4.2l-1.2-3h-3.4l-1.1 3H13Zm6.2-6h1.8L20 17.8 19.2 21Z" />
+              </svg>
+            </span>
+            <strong data-display-name>北看台</strong>
+          </a>
+          <button class="icon-button" type="button" data-open-schedule aria-label="添加录制">
+            <i data-lucide="plus"></i>
+          </button>
+        </header>
+
+        <main>
+          <section class="view is-active" data-view-panel="home">
+            <header class="page-header">
+              <div>
+                <p class="day-line" data-day-line>比赛已经替你收好</p>
+                <h1>早上好，先从昨晚开始。</h1>
+                <p class="header-note">
+                  缩略图、标题和接口都不会泄露赛果。点击一轮录像，直接开球。
+                </p>
+              </div>
+              <div class="header-actions">
+                <button class="button button--secondary" type="button" data-import-open>
+                  <i data-lucide="folder-search"></i>
+                  导入录像
+                </button>
+                <button class="button button--primary" type="button" data-open-schedule>
+                  <i data-lucide="calendar-plus"></i>
+                  安排录制
+                </button>
+              </div>
+            </header>
+
+            <section class="overnight-strip" aria-labelledby="overnight-title">
+              <div class="strip-icon" aria-hidden="true">
+                <i data-lucide="moon-star"></i>
+              </div>
+              <div>
+                <h2 id="overnight-title">夜间录制守住了</h2>
+                <p data-overnight-copy>正在检查录像环境和下一场计划。</p>
+              </div>
+              <div class="strip-state" data-overnight-state>
+                <i data-lucide="shield-check"></i>
+                <span>无剧透保护已开启</span>
+              </div>
+            </section>
+
+            <div class="workspace-grid">
+              <section class="library-section" aria-labelledby="ready-title">
+                <div class="section-heading">
+                  <div>
+                    <h2 id="ready-title">等待开球</h2>
+                    <p data-ready-summary>正在读取本地录像库…</p>
+                  </div>
+                  <button class="text-button" type="button" data-rescan>
+                    <i data-lucide="refresh-cw"></i>
+                    扫描录像目录
+                  </button>
+                </div>
+
+                <div class="recording-list" data-recording-list aria-live="polite">
+                  <div class="skeleton-row" aria-label="正在加载录像">
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="support-column" aria-label="录制状态">
+                <section class="support-panel" aria-labelledby="next-match-title">
+                  <div class="support-heading">
+                    <span class="section-icon"><i data-lucide="radio-tower"></i></span>
+                    <div>
+                      <h2 id="next-match-title">下一场录制</h2>
+                      <p>机器会提前入场</p>
+                    </div>
+                  </div>
+                  <div data-next-fixture>
+                    <p class="empty-inline">还没有安排下一场。</p>
+                  </div>
+                </section>
+
+                <section class="support-panel" aria-labelledby="storage-title">
+                  <div class="support-heading">
+                    <span class="section-icon section-icon--amber">
+                      <i data-lucide="hard-drive"></i>
+                    </span>
+                    <div>
+                      <h2 id="storage-title">录像空间</h2>
+                      <p>给长比赛留足余量</p>
+                    </div>
+                  </div>
+                  <div class="storage-meter" aria-label="磁盘使用情况">
+                    <div class="meter-copy">
+                      <strong data-free-space>正在读取</strong>
+                      <span data-disk-total></span>
+                    </div>
+                    <div class="meter-track" aria-hidden="true">
+                      <span data-disk-bar></span>
+                    </div>
+                  </div>
+                  <dl class="status-list">
+                    <div>
+                      <dt>录制引擎</dt>
+                      <dd data-ffmpeg-state>检查中</dd>
+                    </div>
+                    <div>
+                      <dt>正在录像</dt>
+                      <dd data-active-jobs>0 场</dd>
+                    </div>
+                    <div>
+                      <dt>遮罩策略</dt>
+                      <dd data-mask-strategy>播放器遮罩</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section class="support-note">
+                  <i data-lucide="info"></i>
+                  <p>
+                    播放器遮罩只影响你看到的画面，原录像保持完整；写入遮罩会把黑色区域永久录进文件。
+                  </p>
+                </section>
+              </aside>
+            </div>
+          </section>
+
+          <section class="view" data-view-panel="schedule" hidden>
+            <header class="page-header">
+              <div>
+                <p class="day-line">录制计划</p>
+                <h1>把凌晨交给机器。</h1>
+                <p class="header-note">
+                  填好开球时间和直播流地址。服务启动期间，到点会自动录制并切断赛果入口。
+                </p>
+              </div>
+              <button class="button button--primary" type="button" data-open-schedule>
+                <i data-lucide="calendar-plus"></i>
+                安排一场
+              </button>
+            </header>
+
+            <section class="schedule-surface" aria-labelledby="schedule-list-title">
+              <div class="section-heading">
+                <div>
+                  <h2 id="schedule-list-title">赛程队列</h2>
+                  <p>录制窗口包含开场前缓冲和结束后延录。</p>
+                </div>
+              </div>
+              <div class="schedule-table" data-schedule-table></div>
+            </section>
+          </section>
+
+          <section class="view" data-view-panel="settings" hidden>
+            <header class="page-header">
+              <div>
+                <p class="day-line">保护策略</p>
+                <h1>比分只在你看完以后出现。</h1>
+                <p class="header-note">
+                  调整遮罩、录像目录和录制窗口。所有设置保存在本机。
+                </p>
+              </div>
+              <button class="button button--primary" type="button" data-save-settings>
+                <i data-lucide="save"></i>
+                保存设置
+              </button>
+            </header>
+
+            <div class="settings-layout">
+              <form class="settings-surface" data-settings-form>
+                <section class="settings-group">
+                  <div class="settings-copy">
+                    <h2>无剧透模式</h2>
+                    <p>隐藏未揭晓比分，并移除录像标题中的结果信息。</p>
+                  </div>
+                  <label class="switch-control">
+                    <input type="checkbox" name="spoilerMode" />
+                    <span aria-hidden="true"></span>
+                    <strong>始终保护</strong>
+                  </label>
+                </section>
+
+                <section class="settings-group settings-group--stacked">
+                  <div class="settings-copy">
+                    <h2>比分遮罩方式</h2>
+                    <p>推荐先使用播放器遮罩，确认位置稳定后再选择永久写入。</p>
+                  </div>
+                  <div class="segmented-control" role="radiogroup" aria-label="比分遮罩方式">
+                    <label>
+                      <input type="radio" name="burnInMask" value="false" />
+                      <span>播放器遮罩</span>
+                    </label>
+                    <label>
+                      <input type="radio" name="burnInMask" value="true" />
+                      <span>写入录像文件</span>
+                    </label>
+                  </div>
+                  <button class="button button--secondary align-start" type="button" data-open-mask>
+                    <i data-lucide="scan-line"></i>
+                    调整遮罩位置
+                  </button>
+                </section>
+
+                <section class="settings-group settings-group--fields">
+                  <div class="settings-copy">
+                    <h2>存储与录制窗口</h2>
+                    <p>录像按日期和球队命名，保存在指定目录。</p>
+                  </div>
+                  <div class="field-grid">
+                    <label class="field field--wide">
+                      <span>默认 M3U 直播源</span>
+                      <div class="field-action">
+                        <input
+                          name="m3uUrl"
+                          type="url"
+                          placeholder="https://example.com/playlist.m3u"
+                          autocomplete="off"
+                        />
+                        <button
+                          class="button button--secondary button--compact"
+                          type="button"
+                          data-settings-m3u-test
+                        >
+                          测试源
+                        </button>
+                      </div>
+                      <small data-settings-m3u-state>用于新增赛程时快速查找频道。</small>
+                    </label>
+                    <label class="field field--wide">
+                      <span>录像目录</span>
+                      <input name="recordingDir" type="text" autocomplete="off" />
+                    </label>
+                    <label class="field">
+                      <span>开球前缓冲</span>
+                      <div class="number-input">
+                        <input name="preRollMinutes" type="number" min="0" max="60" />
+                        <em>分钟</em>
+                      </div>
+                    </label>
+                    <label class="field">
+                      <span>结束后延录</span>
+                      <div class="number-input">
+                        <input name="postRollMinutes" type="number" min="0" max="90" />
+                        <em>分钟</em>
+                      </div>
+                    </label>
+                    <label class="field">
+                      <span>空间提醒阈值</span>
+                      <div class="number-input">
+                        <input name="diskWarningGb" type="number" min="1" max="1000" />
+                        <em>GB</em>
+                      </div>
+                    </label>
+                  </div>
+                </section>
+              </form>
+
+              <aside class="settings-preview">
+                <div class="preview-screen" data-mask-preview>
+                  <img
+                    src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=82"
+                    alt=""
+                  />
+                  <span class="preview-shield" data-preview-shield></span>
+                  <span class="preview-live">LIVE</span>
+                </div>
+                <div>
+                  <h2>遮罩预览</h2>
+                  <p>比分条通常位于画面左上或居中。不同平台切换时，建议每赛季复核一次。</p>
+                </div>
+              </aside>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog class="dialog" data-schedule-dialog>
+      <form method="dialog" data-schedule-form>
+        <div class="dialog-heading">
+          <div>
+            <p class="day-line">新增录制</p>
+            <h2>安排一场比赛</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="field-grid field-grid--dialog">
+          <label class="field">
+            <span>主队</span>
+            <input name="home" value="阿森纳" maxlength="60" required />
+          </label>
+          <label class="field">
+            <span>客队</span>
+            <input name="away" placeholder="对手" maxlength="60" required />
+          </label>
+          <label class="field">
+            <span>赛事</span>
+            <input name="competition" value="英超" maxlength="80" required />
+          </label>
+          <label class="field">
+            <span>开球时间</span>
+            <input name="kickoffAt" type="datetime-local" required />
+          </label>
+          <label class="field">
+            <span>预计时长</span>
+            <div class="number-input">
+              <input name="durationMinutes" type="number" min="30" max="240" value="120" />
+              <em>分钟</em>
+            </div>
+          </label>
+          <div class="field field--wide">
+            <span>从 M3U 直播源选择</span>
+            <div class="field-action">
+              <input
+                name="m3uUrl"
+                type="url"
+                placeholder="https://example.com/playlist.m3u"
+                autocomplete="off"
+              />
+              <button
+                class="button button--secondary button--compact"
+                type="button"
+                data-load-m3u
+              >
+                加载频道
+              </button>
+            </div>
+            <small data-m3u-status>加载后可按“阿森纳”或其他球队名称筛选。</small>
+          </div>
+          <div class="channel-browser field--wide" data-channel-browser hidden>
+            <label class="field">
+              <span>搜索频道</span>
+              <input
+                type="search"
+                placeholder="阿森纳、英超、CCTV5…"
+                autocomplete="off"
+                data-channel-search
+              />
+            </label>
+            <div class="channel-results" data-channel-results></div>
+          </div>
+          <label class="field field--wide">
+            <span>直播流地址</span>
+            <div class="field-action">
+              <input
+                name="streamUrl"
+                type="url"
+                placeholder="https://example.com/live.m3u8"
+                autocomplete="off"
+              />
+              <button
+                class="button button--secondary button--compact"
+                type="button"
+                data-probe-stream
+              >
+                测试流
+              </button>
+            </div>
+            <small data-stream-status>请只录制你有权保存的直播源。</small>
+          </label>
+          <label class="field">
+            <span>流格式</span>
+            <select name="inputFormat">
+              <option value="auto">自动识别</option>
+              <option value="hls">强制 HLS</option>
+            </select>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel">取消</button>
+          <button class="button button--primary" type="submit" value="default">
+            <i data-lucide="calendar-check"></i>
+            加入录制队列
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog" data-mask-dialog>
+      <form method="dialog" data-mask-form>
+        <div class="dialog-heading">
+          <div>
+            <p class="day-line">比分区域</p>
+            <h2>调整播放器遮罩</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="mask-workspace">
+          <div class="mask-canvas" data-mask-canvas>
+            <img
+              src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=82"
+              alt=""
+            />
+            <span class="mask-shape" data-mask-shape></span>
+          </div>
+          <div class="mask-controls">
+            <fieldset>
+              <legend>快捷位置</legend>
+              <div class="preset-grid">
+                <button type="button" data-mask-preset="top-left">左上</button>
+                <button type="button" data-mask-preset="top-center">居中</button>
+                <button type="button" data-mask-preset="top-right">右上</button>
+                <button type="button" data-mask-preset="bottom-left">左下</button>
+              </div>
+            </fieldset>
+            <label class="range-field">
+              <span>水平位置 <em data-mask-x-value>3.5%</em></span>
+              <input name="x" type="range" min="0" max="100" step="0.5" />
+            </label>
+            <label class="range-field">
+              <span>垂直位置 <em data-mask-y-value>3%</em></span>
+              <input name="y" type="range" min="0" max="100" step="0.5" />
+            </label>
+            <label class="range-field">
+              <span>遮罩宽度 <em data-mask-width-value>37%</em></span>
+              <input name="width" type="range" min="5" max="100" step="0.5" />
+            </label>
+            <label class="range-field">
+              <span>遮罩高度 <em data-mask-height-value>11%</em></span>
+              <input name="height" type="range" min="3" max="40" step="0.5" />
+            </label>
+            <label class="color-field">
+              <span>遮罩颜色</span>
+              <input name="color" type="color" />
+            </label>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel">取消</button>
+          <button class="button button--primary" type="submit" value="default">
+            应用遮罩
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog" data-import-dialog>
+      <form method="dialog" data-import-form>
+        <div class="dialog-heading">
+          <div>
+            <p class="day-line">本地文件</p>
+            <h2>导入一段录像</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="import-choices">
+          <label class="field">
+            <span>录像文件绝对路径</span>
+            <input
+              name="localPath"
+              placeholder="E:\Football\Arsenal vs Everton.mp4"
+              autocomplete="off"
+            />
+          </label>
+          <div class="or-separator"><span>或者</span></div>
+          <button class="button button--secondary button--full" type="button" data-scan-dialog>
+            <i data-lucide="folder-search-2"></i>
+            扫描设置中的录像目录
+          </button>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel">取消</button>
+          <button class="button button--primary" type="submit" value="default">
+            导入录像
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog dialog--confirm" data-reveal-dialog>
+      <form method="dialog">
+        <div class="confirm-mark"><i data-lucide="eye"></i></div>
+        <h2>现在揭晓比分？</h2>
+        <p>揭晓后，这场比赛的赛果会保存在本机。播放器不会自动关闭，你仍然可以继续看录像。</p>
+        <div class="dialog-actions dialog-actions--center">
+          <button class="button button--secondary" value="cancel">先不揭晓</button>
+          <button class="button button--primary" value="confirm">我确认揭晓</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="player-layer" data-player-layer hidden aria-label="录像播放器">
+      <div class="player-shell">
+        <header class="player-header">
+          <button class="player-back" type="button" data-player-close>
+            <i data-lucide="arrow-left"></i>
+            返回录像库
+          </button>
+          <div class="player-title">
+            <span class="spoiler-dot" aria-hidden="true"></span>
+            <div>
+              <strong data-player-title>比赛录像</strong>
+              <small>比分与赛果已封存</small>
+            </div>
+          </div>
+          <button class="button button--player" type="button" data-player-reveal>
+            <i data-lucide="eye-off"></i>
+            揭晓比分
+          </button>
+        </header>
+
+        <div class="video-stage" data-video-stage>
+          <video data-video playsinline preload="metadata"></video>
+          <span class="score-shield" data-score-shield aria-hidden="true"></span>
+          <div class="player-message" data-player-message hidden>
+            <i data-lucide="shield-alert"></i>
+            <strong>录像暂时无法播放</strong>
+            <p>本地文件可能已移动，或者浏览器不支持该视频编码。</p>
+          </div>
+        </div>
+
+        <div class="player-controls">
+          <div class="timeline-wrap">
+            <input
+              class="timeline"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              aria-label="播放进度"
+              data-player-timeline
+            />
+            <span class="timeline-buffer" data-player-buffer></span>
+          </div>
+          <div class="control-row">
+            <div class="control-cluster">
+              <button class="player-icon" type="button" data-player-back10 aria-label="后退十秒">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+              <button class="player-icon player-icon--primary" type="button" data-player-toggle>
+                <i data-lucide="play"></i>
+                <span class="sr-only">播放</span>
+              </button>
+              <button class="player-icon" type="button" data-player-forward30 aria-label="前进三十秒">
+                <i data-lucide="rotate-cw"></i>
+              </button>
+              <span class="player-time"><b data-player-current>00:00</b> / <span data-player-duration>00:00</span></span>
+            </div>
+            <div class="control-cluster">
+              <button class="player-icon" type="button" data-player-mask aria-label="切换比分遮罩">
+                <i data-lucide="scan-line"></i>
+              </button>
+              <button class="player-icon" type="button" data-player-mute aria-label="静音">
+                <i data-lucide="volume-2"></i>
+              </button>
+              <input
+                class="volume"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value="1"
+                aria-label="音量"
+                data-player-volume
+              />
+              <button class="player-icon" type="button" data-player-fullscreen aria-label="全屏">
+                <i data-lucide="maximize"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="toast-region" data-toast-region aria-live="polite"></div>
+    <script src="/vendor/lucide.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
