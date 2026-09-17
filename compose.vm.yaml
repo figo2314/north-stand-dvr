@@ -1,0 +1,7 @@
+services:
+  north-stand-dvr:
+    environment:
+      FFMPEG_BIN: /app/deploy/ffmpeg-host.sh
+    volumes:
+      - /opt/north-stand-dvr/ffmpeg-runtime/usr:/host/usr:ro
+      - /lib/x86_64-linux-gnu:/host/lib/x86_64-linux-gnu:ro

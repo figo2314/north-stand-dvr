@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const ffmpegPath = require("ffmpeg-static");
+const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 
 const VIDEO_EXTENSIONS = new Set([".mp4", ".mkv", ".mov", ".ts", ".m4v", ".webm"]);
 const activeJobs = new Map();

@@ -1,6 +1,6 @@
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
-const ffmpegPath = require("ffmpeg-static");
+const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 
 const MAX_PLAYLIST_BYTES = 5 * 1024 * 1024;
 

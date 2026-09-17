@@ -5,7 +5,7 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
-const ffmpegPath = require("ffmpeg-static");
+const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 const { JsonStore } = require("./store");
 const {
   getActiveJobs,

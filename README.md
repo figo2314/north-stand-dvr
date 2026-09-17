@@ -17,6 +17,16 @@ npm start
 
 打开 [http://127.0.0.1:4173/mockup.html](http://127.0.0.1:4173/mockup.html)，程序会读取当前 M3U 的体育分组，按开球时间排列比赛。即将开始或正在直播的比赛可以一键预录，流地址会直接写入录制日程；再次点击即可取消尚未开始的预约。已结束的条目可以直接“录制回放”，该流程不受开球时间窗口限制，录制完成后会进入待看录像。
 
+## Linux VM 使用主机 FFmpeg
+
+如果 VPS 主机已经安装 FFmpeg，但容器内的静态二进制不稳定，可以使用 VM override：
+
+```bash
+docker compose -f compose.yaml -f compose.vm.yaml up -d
+```
+
+该配置通过 `deploy/ffmpeg-host.sh` 调用主机 FFmpeg，并只读挂载所需的动态库。适用于 Ubuntu 24.04 等 glibc 2.39 主机。
+
 ## 实际录制
 
 1. 在“录制日程”中添加球队、开球时间和直播流地址。
