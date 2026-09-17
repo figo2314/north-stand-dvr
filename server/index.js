@@ -14,6 +14,7 @@ const {
   safeFilename,
   scanLibrary,
   startRecording,
+  stopRecording,
   stopAll
 } = require("./dvr");
 const { fetchM3u, probeStream } = require("./m3u");
@@ -132,9 +133,9 @@ function recordingFromFinishedJob(fixture, recordingId, details) {
     title: `${fixture.home} vs ${fixture.away}`,
     competition: fixture.competition || "足球比赛",
     playedAt: fixtureDate.toISOString(),
-    durationSeconds: Math.round(
-      Number(fixture.durationMinutes || 120) * 60 + postRollSeconds
-    ),
+    durationSeconds:
+      Number(details.durationSeconds) ||
+      Math.round(Number(fixture.durationMinutes || 120) * 60 + postRollSeconds),
     sizeBytes: details.sizeBytes,
     status: "ready",
     thumbnail:
@@ -188,6 +189,10 @@ async function attemptScheduledRecording(fixture, { bypassWindow = false } = {})
       processingJobs.delete(fixture.id);
       lastSchedulerError = error.message;
       await store.updateFixture(fixture.id, { status: "failed" });
+    },
+    onCanceled: async () => {
+      processingJobs.delete(fixture.id);
+      await store.removeFixture(fixture.id);
     }
   });
 
@@ -569,6 +574,87 @@ app.post(
       fixture: updated,
       active: processingJobs.has(fixture.id)
     });
+  })
+);
+
+app.post(
+  "/api/fixtures/:id/stop-recording",
+  asyncRoute(async (request, response) => {
+    const result = stopRecording(request.params.id);
+    if (!result) {
+      throw badRequest("这场比赛当前没有在录制");
+    }
+    response.json({ stopping: true, discard: false });
+  })
+);
+
+app.post(
+  "/api/fixtures/:id/cancel-recording",
+  asyncRoute(async (request, response) => {
+    const result = stopRecording(request.params.id, { discard: true });
+    if (!result) {
+      throw badRequest("这场比赛当前没有在录制");
+    }
+    response.json({ stopping: true, discard: true });
+  })
+);
+
+app.get(
+  "/api/fixtures/:id/preview",
+  asyncRoute(async (request, response) => {
+    const job = getActiveJobs().find(
+      (activeJob) => activeJob.fixtureId === request.params.id
+    );
+    if (!job || !fs.existsSync(job.outputPath)) {
+      throw notFound("这段录像还没有可用的预览画面");
+    }
+
+    const previewDirectory = path.join(ROOT, "data", "previews");
+    await fsp.mkdir(previewDirectory, { recursive: true });
+    const previewPath = path.join(
+      previewDirectory,
+      `${safeFilename(request.params.id)}.jpg`
+    );
+    const previewStats = fs.existsSync(previewPath)
+      ? fs.statSync(previewPath)
+      : null;
+
+    if (!previewStats || Date.now() - previewStats.mtimeMs > 1200) {
+      const baseArgs = [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y"
+      ];
+      const outputArgs = [
+        "-frames:v",
+        "1",
+        "-vf",
+        "scale=720:-2",
+        "-q:v",
+        "4",
+        previewPath
+      ];
+      let result = spawnSync(
+        ffmpegPath,
+        [...baseArgs, "-sseof", "-2", "-i", job.outputPath, ...outputArgs],
+        { timeout: 6000, windowsHide: true }
+      );
+      if (result.status !== 0 || !fs.existsSync(previewPath)) {
+        result = spawnSync(
+          ffmpegPath,
+          [...baseArgs, "-i", job.outputPath, ...outputArgs],
+          { timeout: 6000, windowsHide: true }
+        );
+      }
+      if (result.status !== 0 || !fs.existsSync(previewPath)) {
+        throw notFound("预览画面还没有生成");
+      }
+    }
+
+    response.setHeader("Cache-Control", "no-store, max-age=0");
+    response.setHeader("Content-Type", "image/jpeg");
+    response.sendFile(previewPath);
   })
 );
 

@@ -46,6 +46,8 @@
   const app = {
     channels: [],
     matches: [],
+    filter: "all",
+    query: "",
     scheduled: readScheduledMatches()
   };
 
@@ -201,10 +203,21 @@
   function renderMatches() {
     const list = $("[data-match-list]");
     const order = { live: 0, upcoming: 1, ended: 2 };
-    app.matches.sort((a, b) => {
-      const statusDiff = order[a.status] - order[b.status];
-      return statusDiff || a.kickoffAt - b.kickoffAt;
-    });
+    const query = app.query.trim().toLocaleLowerCase("zh-CN");
+    const matches = [...app.matches]
+      .filter((match) => app.filter === "all" || match.status === app.filter)
+      .filter((match) => {
+        if (!query) {
+          return true;
+        }
+        return `${match.home} ${match.away} ${match.league} ${match.name} ${match.group}`
+          .toLocaleLowerCase("zh-CN")
+          .includes(query);
+      })
+      .sort((a, b) => {
+        const statusDiff = order[a.status] - order[b.status];
+        return statusDiff || a.kickoffAt - b.kickoffAt;
+      });
 
     if (!app.matches.length) {
       list.innerHTML = `
@@ -218,7 +231,19 @@
       return;
     }
 
-    list.innerHTML = app.matches
+    if (!matches.length) {
+      list.innerHTML = `
+        <div class="radar-empty">
+          <i data-lucide="search-x"></i>
+          <h3>没有符合条件的比赛</h3>
+          <p>换个球队、赛事或状态再试试。</p>
+        </div>
+      `;
+      refreshIcons();
+      return;
+    }
+
+    list.innerHTML = matches
       .map((match) => {
         const action = app.scheduled.get(match.id);
         const hasAction = Boolean(action);
@@ -492,9 +517,29 @@
       toggleSchedule(scheduleButton.dataset.scheduleMatch, scheduleButton);
       return;
     }
+    const filterButton = event.target.closest("[data-radar-filter]");
+    if (filterButton) {
+      app.filter = filterButton.dataset.radarFilter;
+      for (const button of document.querySelectorAll("[data-radar-filter]")) {
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.radarFilter === app.filter)
+        );
+      }
+      renderMatches();
+      return;
+    }
     if (event.target.closest("[data-refresh]")) {
       loadSource();
     }
+  });
+
+  document.addEventListener("input", (event) => {
+    if (!event.target.matches("[data-radar-search]")) {
+      return;
+    }
+    app.query = event.target.value;
+    renderMatches();
   });
 
   loadSource();

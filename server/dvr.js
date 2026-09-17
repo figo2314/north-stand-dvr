@@ -70,7 +70,9 @@ function buildFfmpegArgs({
     "-hide_banner",
     "-loglevel",
     "warning",
-    "-nostdin",
+    "-progress",
+    "pipe:1",
+    "-nostats",
     "-y"
   ];
 
@@ -93,9 +95,10 @@ function buildFfmpegArgs({
     args.push("-vf", filter);
   } else {
     args.push("-c", "copy");
+    args.push("-bsf:a", "aac_adtstoasc");
   }
 
-  args.push("-movflags", "+faststart", outputPath);
+  args.push("-movflags", "+frag_keyframe+empty_moov+default_base_moof", outputPath);
   return args;
 }
 
@@ -137,6 +140,7 @@ async function startRecording({
   settings,
   captureDurationSeconds,
   onComplete,
+  onCanceled,
   onError
 }) {
   if (activeJobs.has(fixture.id)) {
@@ -169,15 +173,43 @@ async function startRecording({
 
   const child = spawn(ffmpegPath, args, {
     windowsHide: true,
-    stdio: ["ignore", "ignore", "pipe"]
+    stdio: ["pipe", "pipe", "pipe"]
   });
 
   let stderr = "";
+  let progressBuffer = "";
+  const job = {
+    child,
+    outputPath,
+    startedAt: new Date().toISOString(),
+    durationSeconds: Math.round(durationSeconds),
+    progressSeconds: 0,
+    speed: null,
+    discard: false
+  };
   child.stderr.on("data", (chunk) => {
     stderr = `${stderr}${chunk.toString()}`.slice(-5000);
   });
+  child.stdout.on("data", (chunk) => {
+    progressBuffer = `${progressBuffer}${chunk.toString()}`;
+    const lines = progressBuffer.split(/\r?\n/);
+    progressBuffer = lines.pop() || "";
+    for (const line of lines) {
+      const separator = line.indexOf("=");
+      if (separator < 0) {
+        continue;
+      }
+      const key = line.slice(0, separator);
+      const value = line.slice(separator + 1);
+      if (key === "out_time_us" || key === "out_time_ms") {
+        job.progressSeconds = Math.max(0, Number(value) / 1_000_000);
+      } else if (key === "speed" && value !== "N/A") {
+        job.speed = value;
+      }
+    }
+  });
 
-  activeJobs.set(fixture.id, { child, outputPath, startedAt: new Date().toISOString() });
+  activeJobs.set(fixture.id, job);
 
   let settled = false;
   const finish = (callback) => {
@@ -195,8 +227,21 @@ async function startRecording({
 
   child.once("close", (code, signal) => {
     const stats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
+    if (job.discard) {
+      if (stats) {
+        fs.rmSync(outputPath, { force: true });
+      }
+      finish(() => onCanceled?.());
+      return;
+    }
     if (code === 0 && stats?.size > 0) {
-      finish(() => onComplete?.({ outputPath, sizeBytes: stats.size }));
+      finish(() =>
+        onComplete?.({
+          outputPath,
+          sizeBytes: stats.size,
+          durationSeconds: Math.round(job.progressSeconds || durationSeconds)
+        })
+      );
       return;
     }
     finish(() =>
@@ -221,13 +266,39 @@ function getActiveJobs() {
   return Array.from(activeJobs.entries()).map(([fixtureId, job]) => ({
     fixtureId,
     startedAt: job.startedAt,
-    outputPath: job.outputPath
+    outputPath: job.outputPath,
+    durationSeconds: job.durationSeconds,
+    progressSeconds: Math.round(job.progressSeconds),
+    speed: job.speed,
+    previewUrl: `/api/fixtures/${encodeURIComponent(fixtureId)}/preview`
   }));
+}
+
+function stopRecording(fixtureId, { discard = false } = {}) {
+  const job = activeJobs.get(fixtureId);
+  if (!job) {
+    return null;
+  }
+  job.discard = discard;
+  if (job.child.stdin?.writable) {
+    job.child.stdin.write("q\n");
+  } else {
+    job.child.kill("SIGTERM");
+  }
+  return {
+    fixtureId,
+    discard,
+    outputPath: job.outputPath
+  };
 }
 
 function stopAll() {
   for (const [, job] of activeJobs) {
-    job.child.kill("SIGTERM");
+    if (job.child.stdin?.writable) {
+      job.child.stdin.write("q\n");
+    } else {
+      job.child.kill("SIGTERM");
+    }
   }
 }
 
@@ -280,5 +351,6 @@ module.exports = {
   safeFilename,
   scanLibrary,
   startRecording,
+  stopRecording,
   stopAll
 };

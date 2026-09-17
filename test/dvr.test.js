@@ -93,6 +93,12 @@ test("buildFfmpegArgs copies streams unless burn-in masking is enabled", () => {
 
   assert.ok(copyArgs.includes("-c"));
   assert.equal(copyArgs[copyArgs.indexOf("-c") + 1], "copy");
+  assert.equal(copyArgs[copyArgs.indexOf("-bsf:a") + 1], "aac_adtstoasc");
+  assert.equal(
+    copyArgs[copyArgs.indexOf("-movflags") + 1],
+    "+frag_keyframe+empty_moov+default_base_moof"
+  );
+  assert.equal(copyArgs[copyArgs.indexOf("-progress") + 1], "pipe:1");
   assert.ok(maskArgs.includes("-vf"));
   assert.ok(!maskArgs.includes("-c"));
 });

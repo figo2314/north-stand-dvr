@@ -558,6 +558,41 @@
       </form>
     </dialog>
 
+    <dialog class="dialog dialog--confirm" data-cancel-recording-dialog>
+      <form method="dialog">
+        <div class="confirm-mark confirm-mark--danger">
+          <i data-lucide="circle-stop"></i>
+        </div>
+        <h2>取消这次录制？</h2>
+        <p data-cancel-recording-copy>正在写入的临时录像会被删除，且无法恢复。</p>
+        <div class="dialog-actions dialog-actions--center">
+          <button class="button button--secondary" value="cancel">继续录制</button>
+          <button class="button button--danger" value="confirm">确认取消</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog dialog--preview" data-preview-dialog>
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="day-line">实时画面 · 每 2 秒更新</p>
+            <h2 data-preview-title>录制预览</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭预览">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="preview-frame">
+          <img data-preview-image alt="录制中的实时画面" />
+        </div>
+        <p class="preview-caption" data-preview-caption>正在等待第一帧画面…</p>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel">关闭</button>
+        </div>
+      </form>
+    </dialog>
+
     <section class="player-layer" data-player-layer hidden aria-label="录像播放器">
       <div class="player-shell">
         <header class="player-header">

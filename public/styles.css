@@ -1139,7 +1139,40 @@ main {
 
 .schedule-actions {
   display: flex;
+  gap: 6px;
   justify-content: flex-end;
+}
+
+.schedule-progress {
+  display: grid;
+  grid-column: 2 / -1;
+  gap: 7px;
+  margin-top: -4px;
+}
+
+.schedule-progress__track {
+  height: 6px;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: 999px;
+}
+
+.schedule-progress__track span {
+  display: block;
+  width: var(--progress);
+  height: 100%;
+  background: var(--brand);
+  border-radius: inherit;
+  transition: width 700ms linear;
+}
+
+.schedule-progress__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .row-action {
@@ -1157,6 +1190,12 @@ main {
 .row-action:hover {
   color: var(--brand);
   border-color: var(--brand);
+}
+
+.row-action--danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .row-action svg {
@@ -1753,6 +1792,31 @@ main {
   text-align: center;
 }
 
+.dialog--preview {
+  width: min(900px, calc(100vw - 28px));
+}
+
+.preview-frame {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  margin-top: 18px;
+  background: oklch(0.12 0.026 258);
+  border-radius: var(--radius-md);
+}
+
+.preview-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-caption {
+  margin-top: 10px;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .dialog--confirm form {
   padding: 28px;
 }
@@ -2312,6 +2376,10 @@ main {
   .schedule-actions {
     grid-column: 3;
     grid-row: 1 / span 2;
+  }
+
+  .schedule-progress {
+    grid-column: 1 / -1;
   }
 
   .settings-group {

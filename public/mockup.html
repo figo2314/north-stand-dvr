@@ -71,10 +71,35 @@
                 <h2 id="radar-list-title">比赛时间线</h2>
                 <p>按开球时间排序，未开赛优先，录像不会显示比分。</p>
               </div>
-              <button class="text-button" type="button" data-refresh>
-                <i data-lucide="refresh-cw"></i>
-                刷新源
-              </button>
+              <div class="radar-tools">
+                <label class="radar-search">
+                  <i data-lucide="search"></i>
+                  <input
+                    type="search"
+                    placeholder="搜索球队或赛事"
+                    autocomplete="off"
+                    data-radar-search
+                  />
+                </label>
+                <div class="radar-filters" role="group" aria-label="比赛状态筛选">
+                  <button type="button" data-radar-filter="all" aria-pressed="true">
+                    全部
+                  </button>
+                  <button type="button" data-radar-filter="live" aria-pressed="false">
+                    直播中
+                  </button>
+                  <button type="button" data-radar-filter="upcoming" aria-pressed="false">
+                    待开赛
+                  </button>
+                  <button type="button" data-radar-filter="ended" aria-pressed="false">
+                    已结束
+                  </button>
+                </div>
+                <button class="text-button" type="button" data-refresh>
+                  <i data-lucide="refresh-cw"></i>
+                  刷新源
+                </button>
+              </div>
             </div>
             <div class="radar-list" data-match-list>
               <div class="skeleton-row radar-skeleton">

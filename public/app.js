@@ -10,6 +10,9 @@
     maskDraft: null,
     revealTarget: null,
     deleteTarget: null,
+    cancelRecordingTarget: null,
+    previewFixtureId: null,
+    previewTimer: null,
     m3uChannels: []
   };
 
@@ -444,6 +447,9 @@
     const fixtures = [...(app.data?.fixtures || [])].sort(
       (a, b) => new Date(a.kickoffAt) - new Date(b.kickoffAt)
     );
+    const activeJobs = new Map(
+      (app.data?.health?.activeJobs || []).map((job) => [job.fixtureId, job])
+    );
 
     if (!fixtures.length) {
       container.innerHTML = `
@@ -460,10 +466,24 @@
     container.innerHTML = fixtures
       .map((fixture) => {
         const date = new Date(fixture.kickoffAt);
+        const activeJob = activeJobs.get(fixture.id);
+        const isRecording = fixture.status === "recording" && activeJob;
         const canRecord =
           fixture.streamUrl &&
           !["recording", "recorded"].includes(fixture.status);
-        const action = fixture.recordingId
+        const action = isRecording
+          ? `
+            <button class="row-action" type="button" data-preview-fixture="${escapeHtml(
+              fixture.id
+            )}" aria-label="查看实时预览" title="实时预览"><i data-lucide="scan-eye"></i></button>
+            <button class="row-action" type="button" data-stop-recording="${escapeHtml(
+              fixture.id
+            )}" aria-label="停止并保存录像" title="停止并保存"><i data-lucide="square"></i></button>
+            <button class="row-action row-action--danger" type="button" data-cancel-recording="${escapeHtml(
+              fixture.id
+            )}" aria-label="取消并删除录像" title="取消并删除"><i data-lucide="trash-2"></i></button>
+          `
+          : fixture.recordingId
           ? `<button class="row-action" type="button" data-play-fixture="${escapeHtml(
               fixture.recordingId
             )}" aria-label="播放录像"><i data-lucide="play"></i></button>`
@@ -474,9 +494,16 @@
             : `<button class="row-action" type="button" data-edit-fixture="${escapeHtml(
                 fixture.id
               )}" aria-label="编辑比赛"><i data-lucide="pencil"></i></button>`;
+        const progressSeconds = Number(activeJob?.progressSeconds || 0);
+        const targetSeconds = Number(
+          activeJob?.durationSeconds || fixture.durationMinutes * 60 || 0
+        );
+        const progressPercent = targetSeconds
+          ? Math.min(100, Math.max(0, (progressSeconds / targetSeconds) * 100))
+          : 0;
 
         return `
-          <article class="schedule-row">
+          <article class="schedule-row${isRecording ? " is-recording" : ""}">
             <div class="schedule-date">
               <strong>${escapeHtml(
                 new Intl.DateTimeFormat("zh-CN", {
@@ -507,6 +534,25 @@
               ${escapeHtml(statusLabel(fixture.status))}
             </span>
             <div class="schedule-actions">${action}</div>
+            ${
+              isRecording
+                ? `
+                  <div class="schedule-progress">
+                    <div class="schedule-progress__track">
+                      <span style="--progress:${progressPercent}%"></span>
+                    </div>
+                    <div class="schedule-progress__meta">
+                      <span>${escapeHtml(
+                        progressSeconds ? formatClock(progressSeconds) : "等待第一帧"
+                      )} / ${escapeHtml(
+                        targetSeconds ? formatClock(targetSeconds) : "时长待识别"
+                      )}</span>
+                      <span>${escapeHtml(activeJob.speed ? `速度 ${activeJob.speed}` : "正在连接源")}</span>
+                    </div>
+                  </div>
+                `
+                : ""
+            }
           </article>
         `;
       })
@@ -987,6 +1033,87 @@
     }
   }
 
+  function updateRecordingPreview() {
+    if (!app.previewFixtureId) {
+      return;
+    }
+    const fixture = app.data.fixtures.find(
+      (item) => item.id === app.previewFixtureId
+    );
+    const job = app.data.health?.activeJobs?.find(
+      (item) => item.fixtureId === app.previewFixtureId
+    );
+    if (!fixture || !job) {
+      $("[data-preview-caption]").textContent = "录制已经结束。";
+      return;
+    }
+    $("[data-preview-title]").textContent = `${fixture.home} vs ${fixture.away}`;
+    $("[data-preview-caption]").textContent = `${formatClock(
+      job.progressSeconds || 0
+    )} / ${formatClock(job.durationSeconds || 0)}${
+      job.speed ? ` · 速度 ${job.speed}` : ""
+    }`;
+    $("[data-preview-image]").src = `/api/fixtures/${encodeURIComponent(
+      fixture.id
+    )}/preview?t=${Date.now()}`;
+  }
+
+  function openRecordingPreview(fixtureId) {
+    const fixture = app.data.fixtures.find((item) => item.id === fixtureId);
+    if (!fixture) {
+      return;
+    }
+    app.previewFixtureId = fixtureId;
+    $("[data-preview-dialog]").showModal();
+    updateRecordingPreview();
+    window.clearInterval(app.previewTimer);
+    app.previewTimer = window.setInterval(updateRecordingPreview, 2000);
+  }
+
+  async function stopFixtureRecording(fixtureId) {
+    try {
+      await api(
+        `/api/fixtures/${encodeURIComponent(fixtureId)}/stop-recording`,
+        { method: "POST", body: "{}" }
+      );
+      toast("正在停止录制", "已请求保存当前录像，完成后会进入录像库");
+      window.setTimeout(() => loadState({ quiet: true }), 1200);
+    } catch (error) {
+      toast("无法停止录制", error.message, "error");
+    }
+  }
+
+  function askCancelRecording(fixture) {
+    if (!fixture) {
+      return;
+    }
+    app.cancelRecordingTarget = fixture;
+    $("[data-cancel-recording-copy]").textContent = `“${fixture.home} vs ${fixture.away}”正在写入的临时录像会被删除。`;
+    $("[data-cancel-recording-dialog]").showModal();
+  }
+
+  async function cancelFixtureRecording() {
+    const fixture = app.cancelRecordingTarget;
+    if (!fixture) {
+      return;
+    }
+    try {
+      await api(
+        `/api/fixtures/${encodeURIComponent(fixture.id)}/cancel-recording`,
+        { method: "POST", body: "{}" }
+      );
+      if (app.previewFixtureId === fixture.id) {
+        $("[data-preview-dialog]").close();
+      }
+      toast("正在取消录制", `${fixture.home} vs ${fixture.away} 的临时文件会被删除`);
+      window.setTimeout(() => loadState({ quiet: true }), 800);
+    } catch (error) {
+      toast("无法取消录制", error.message, "error");
+    } finally {
+      app.cancelRecordingTarget = null;
+    }
+  }
+
   async function scanLibrary() {
     try {
       const result = await api("/api/library/scan", {
@@ -1184,6 +1311,27 @@
         return;
       }
 
+      const previewButton = event.target.closest("[data-preview-fixture]");
+      if (previewButton) {
+        openRecordingPreview(previewButton.dataset.previewFixture);
+        return;
+      }
+
+      const stopButton = event.target.closest("[data-stop-recording]");
+      if (stopButton) {
+        stopFixtureRecording(stopButton.dataset.stopRecording);
+        return;
+      }
+
+      const cancelRecordingButton = event.target.closest("[data-cancel-recording]");
+      if (cancelRecordingButton) {
+        const fixture = app.data.fixtures.find(
+          (item) => item.id === cancelRecordingButton.dataset.cancelRecording
+        );
+        askCancelRecording(fixture);
+        return;
+      }
+
       if (event.target.closest("[data-rescan]")) {
         scanLibrary();
         return;
@@ -1328,6 +1476,19 @@
       }
     });
 
+    $("[data-cancel-recording-dialog]").addEventListener("close", (event) => {
+      if (event.currentTarget.returnValue === "confirm") {
+        cancelFixtureRecording();
+      }
+    });
+
+    $("[data-preview-dialog]").addEventListener("close", () => {
+      window.clearInterval(app.previewTimer);
+      app.previewTimer = null;
+      app.previewFixtureId = null;
+      $("[data-preview-image]").removeAttribute("src");
+    });
+
     const video = $("[data-video]");
     video.addEventListener("loadedmetadata", updatePlayerUI);
     video.addEventListener("timeupdate", () => {
@@ -1382,10 +1543,11 @@
       try {
         app.data.health = await api("/api/health");
         renderHealth();
+        renderSchedule();
       } catch {
         // Keep the last known status while the local service is temporarily busy.
       }
-    }, 30_000);
+    }, 3_000);
   }
 
   async function boot() {

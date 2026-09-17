@@ -2,6 +2,7 @@ node_modules/
 recordings/
 data/db.json
 data/*.tmp
+data/previews/
 test-results/
 playwright-report/
 .deploy-vps6/

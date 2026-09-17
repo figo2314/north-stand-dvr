@@ -29,6 +29,8 @@ Updated: 2026-09-16
   when resolving hostnames.
 - The Docker service uses an IPv6-enabled dual-stack network because the M3U
   source resolves to IPv6 only.
+- Active recordings expose live progress, periodic frame previews, graceful
+  stop-and-save, and cancel-and-discard controls.
 - `/api/state` responded successfully.
 - The configured M3U source returned 137 channels and 13 sports channels.
 
@@ -42,6 +44,17 @@ Updated: 2026-09-16
 2. Check `git status --short --ignored`.
 3. Run `npm test` before changing server or data behavior.
 4. Keep work focused on the existing North Stand DVR product.
+
+## Development Workflow
+
+- Work locally: implement, test, and verify changes in this workspace.
+- Do not deploy, SSH into VMs, or modify proxy configuration during normal
+  development.
+- Do not commit or push unless the user explicitly says `发布`.
+- When the user says `发布`, run the relevant tests, commit the changes, and
+  push the `main` branch to GitHub.
+- The VM deployment agent is responsible for pulling and deploying published
+  commits.
 
 ## CC Switch Safety
 
