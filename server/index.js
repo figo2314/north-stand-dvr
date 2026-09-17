@@ -655,10 +655,7 @@ app.delete(
     if (recording.fixtureId) {
       const fixture = store.findFixture(recording.fixtureId);
       if (fixture) {
-        await store.updateFixture(fixture.id, {
-          recordingId: null,
-          status: "deleted"
-        });
+        await store.removeFixture(fixture.id);
       }
     }
 
