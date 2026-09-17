@@ -1,6 +1,8 @@
 const crypto = require("node:crypto");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
+const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
 const ffmpegPath = require("ffmpeg-static");
@@ -302,6 +304,44 @@ app.get(
   "/api/health",
   asyncRoute(async (request, response) => {
     response.json(await healthSnapshot());
+  })
+);
+
+app.get(
+  "/api/system/diagnostics",
+  asyncRoute(async (request, response) => {
+    const ffmpeg = {
+      path: ffmpegPath || null,
+      exists: Boolean(ffmpegPath && fs.existsSync(ffmpegPath))
+    };
+    if (ffmpeg.exists) {
+      const result = spawnSync(ffmpegPath, ["-version"], {
+        encoding: "utf8",
+        timeout: 5000,
+        windowsHide: true
+      });
+      ffmpeg.exitCode = result.status;
+      ffmpeg.signal = result.signal;
+      ffmpeg.error = result.error?.message || null;
+      ffmpeg.stdout = String(result.stdout || "")
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .slice(0, 2);
+      ffmpeg.stderr = String(result.stderr || "").trim().slice(0, 2000);
+    }
+
+    response.json({
+      platform: process.platform,
+      architecture: process.arch,
+      node: process.version,
+      uptimeSeconds: Math.round(process.uptime()),
+      memory: {
+        totalBytes: os.totalmem(),
+        freeBytes: os.freemem(),
+        processRssBytes: process.memoryUsage().rss
+      },
+      ffmpeg
+    });
   })
 );
 

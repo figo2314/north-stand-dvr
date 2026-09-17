@@ -181,7 +181,7 @@ function probeStream({ url, inputFormat = "auto", durationSeconds = 4 }) {
       finish({ ok: false, message: error.message });
     });
 
-    child.once("close", (code) => {
+    child.once("close", (code, signal) => {
       if (code === 0) {
         const videoLine =
           stderr
@@ -195,7 +195,9 @@ function probeStream({ url, inputFormat = "auto", durationSeconds = 4 }) {
       }
       finish({
         ok: false,
-        message: sanitizeFfmpegOutput(stderr) || `FFmpeg 退出码 ${code}`
+        message:
+          sanitizeFfmpegOutput(stderr) ||
+          `FFmpeg 退出码 ${code}${signal ? `，信号 ${signal}` : ""}`
       });
     });
   });

@@ -193,14 +193,20 @@ async function startRecording({
     finish(() => onError?.(error));
   });
 
-  child.once("close", (code) => {
+  child.once("close", (code, signal) => {
     const stats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
     if (code === 0 && stats?.size > 0) {
       finish(() => onComplete?.({ outputPath, sizeBytes: stats.size }));
       return;
     }
     finish(() =>
-      onError?.(new Error(stderr || `FFmpeg exited with code ${code}`), outputPath)
+      onError?.(
+        new Error(
+          stderr ||
+            `FFmpeg exited with code ${code}${signal ? ` signal ${signal}` : ""}`
+        ),
+        outputPath
+      )
     );
   });
 
