@@ -14,6 +14,7 @@ ENV TZ=Asia/Shanghai
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+RUN /app/node_modules/ffmpeg-static/ffmpeg -version > /dev/null
 RUN mkdir -p /app/data /app/recordings
 
 EXPOSE 4173
