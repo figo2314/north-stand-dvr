@@ -59,3 +59,17 @@ test("JsonStore removes a scheduled fixture", async (t) => {
   assert.equal(removed.id, "match-1");
   assert.equal(store.findFixture("match-1"), undefined);
 });
+
+test("JsonStore removes a recording from the library", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "north-stand-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+
+  const store = new JsonStore(path.join(directory, "db.json"));
+  await store.init();
+  await store.addRecording({ id: "recording-1", title: "阿森纳 vs 埃弗顿" });
+
+  const removed = await store.removeRecording("recording-1");
+
+  assert.equal(removed.id, "recording-1");
+  assert.equal(store.findRecording("recording-1"), undefined);
+});

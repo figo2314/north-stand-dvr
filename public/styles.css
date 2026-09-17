@@ -432,6 +432,15 @@ main {
   background: var(--surface-muted);
 }
 
+.button--danger {
+  color: white;
+  background: var(--danger);
+}
+
+.button--danger:hover {
+  background: oklch(0.5 0.2 27);
+}
+
 .button--full {
   width: 100%;
 }
@@ -788,6 +797,24 @@ main {
 .subtle-button:hover {
   color: var(--brand);
   border-color: var(--brand);
+}
+
+.subtle-button--danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.subtle-button--danger:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.subtle-button--danger svg {
+  width: 14px;
+  height: 14px;
 }
 
 .support-column {
@@ -1744,6 +1771,11 @@ main {
 .confirm-mark svg {
   width: 21px;
   height: 21px;
+}
+
+.confirm-mark--danger {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .dialog--confirm p {

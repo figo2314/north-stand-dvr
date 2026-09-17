@@ -39,7 +39,11 @@ test("cancel actions do not create an unintended fixture or reveal", async ({
   await page.goto("/#schedule");
   const before = await page.evaluate(async () => {
     const response = await fetch("/api/state");
-    return (await response.json()).fixtures.length;
+    const state = await response.json();
+    return {
+      fixtures: state.fixtures.length,
+      recordings: state.recordings.length
+    };
   });
 
   await page
@@ -55,15 +59,23 @@ test("cancel actions do not create an unintended fixture or reveal", async ({
   await page.locator("[data-reveal-dialog] [value=cancel]").click();
   await expect(page.locator("[data-reveal-dialog]")).not.toBeVisible();
 
+  await page.goto("/#home");
+  await page.locator("[data-delete-recording]").first().click();
+  await expect(page.locator("[data-delete-dialog]")).toBeVisible();
+  await page.locator("[data-delete-dialog] [value=cancel]").click();
+  await expect(page.locator("[data-delete-dialog]")).not.toBeVisible();
+
   const after = await page.evaluate(async () => {
     const response = await fetch("/api/state");
     const state = await response.json();
     return {
       fixtures: state.fixtures.length,
+      recordings: state.recordings.length,
       score: state.recordings[0].score
     };
   });
-  expect(after.fixtures).toBe(before);
+  expect(after.fixtures).toBe(before.fixtures);
+  expect(after.recordings).toBe(before.recordings);
   expect(after.score).toBeNull();
 });
 

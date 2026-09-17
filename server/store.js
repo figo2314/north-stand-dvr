@@ -171,6 +171,16 @@ class JsonStore {
     await this.persist();
     return clone(recording);
   }
+
+  async removeRecording(id) {
+    const index = this.data.recordings.findIndex((recording) => recording.id === id);
+    if (index < 0) {
+      return null;
+    }
+    const [recording] = this.data.recordings.splice(index, 1);
+    await this.persist();
+    return clone(recording);
+  }
 }
 
 module.exports = {

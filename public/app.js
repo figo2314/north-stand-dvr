@@ -9,6 +9,7 @@
     lastSavedProgress: 0,
     maskDraft: null,
     revealTarget: null,
+    deleteTarget: null,
     m3uChannels: []
   };
 
@@ -153,6 +154,7 @@
       scheduled: "等待录制",
       recording: "正在录制",
       recorded: "已录制",
+      deleted: "录像已删除",
       ready: "可播放",
       failed: "录制失败",
       missed: "错过窗口",
@@ -167,6 +169,7 @@
       scheduled: "clock-3",
       recording: "radio",
       recorded: "check",
+      deleted: "trash-2",
       ready: "check",
       failed: "circle-x",
       missed: "circle-slash-2",
@@ -296,6 +299,14 @@
                       recording.id
                     )}">继续观看</button>`
               }
+              <button
+                class="subtle-button subtle-button--danger"
+                type="button"
+                data-delete-recording="${escapeHtml(recording.id)}"
+              >
+                <i data-lucide="trash-2"></i>
+                删除录像
+              </button>
             </div>
           </article>
         `;
@@ -938,6 +949,44 @@
     }
   }
 
+  function askDeleteRecording(recording) {
+    if (!recording) {
+      return;
+    }
+    app.deleteTarget = recording;
+    $("[data-delete-copy]").textContent = `“${recording.title}”会从本机录像库中移除，且无法撤销。`;
+    $("[data-delete-dialog]").showModal();
+  }
+
+  async function deleteRecording() {
+    const recording = app.deleteTarget;
+    if (!recording) {
+      return;
+    }
+    try {
+      const result = await api(`/api/recordings/${encodeURIComponent(recording.id)}`, {
+        method: "DELETE"
+      });
+      app.data.recordings = app.data.recordings.filter(
+        (item) => item.id !== recording.id
+      );
+      if (app.activeRecording?.id === recording.id) {
+        closePlayer();
+      }
+      toast(
+        "录像已删除",
+        result.fileDeleted
+          ? `${recording.title} 的本地文件也已删除`
+          : `${recording.title} 已从录像库移除`
+      );
+      renderAll();
+    } catch (error) {
+      toast("无法删除录像", error.message, "error");
+    } finally {
+      app.deleteTarget = null;
+    }
+  }
+
   async function scanLibrary() {
     try {
       const result = await api("/api/library/scan", {
@@ -1126,6 +1175,15 @@
         return;
       }
 
+      const deleteButton = event.target.closest("[data-delete-recording]");
+      if (deleteButton) {
+        const recording = app.data.recordings.find(
+          (item) => item.id === deleteButton.dataset.deleteRecording
+        );
+        askDeleteRecording(recording);
+        return;
+      }
+
       if (event.target.closest("[data-rescan]")) {
         scanLibrary();
         return;
@@ -1261,6 +1319,12 @@
     $("[data-reveal-dialog]").addEventListener("close", (event) => {
       if (event.currentTarget.returnValue === "confirm") {
         revealScore();
+      }
+    });
+
+    $("[data-delete-dialog]").addEventListener("close", (event) => {
+      if (event.currentTarget.returnValue === "confirm") {
+        deleteRecording();
       }
     });
 

@@ -67,6 +67,11 @@ function publicMediaUrl(recording) {
   return `/api/recordings/${encodeURIComponent(recording.id)}/stream`;
 }
 
+function pathIsInside(root, target) {
+  const relative = path.relative(root, target);
+  return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
 function publicState() {
   const state = store.snapshot({ redact: true });
   for (const recording of state.recordings) {
@@ -622,6 +627,42 @@ app.patch(
     const watchedSeconds = Math.max(0, Number(request.body?.watchedSeconds) || 0);
     const updated = await store.updateRecording(recording.id, { watchedSeconds });
     response.json({ recording: { id: updated.id, watchedSeconds: updated.watchedSeconds } });
+  })
+);
+
+app.delete(
+  "/api/recordings/:id",
+  asyncRoute(async (request, response) => {
+    const recording = store.findRecording(request.params.id);
+    if (!recording) {
+      throw notFound("没有找到这段录像");
+    }
+
+    let fileDeleted = false;
+    if (recording.localPath) {
+      const recordingRoot = path.resolve(
+        ROOT,
+        store.settings.recordingDir || "./recordings"
+      );
+      const absolutePath = path.resolve(recording.localPath);
+      if (pathIsInside(recordingRoot, absolutePath)) {
+        await fsp.rm(absolutePath, { force: true });
+        fileDeleted = true;
+      }
+    }
+
+    await store.removeRecording(recording.id);
+    if (recording.fixtureId) {
+      const fixture = store.findFixture(recording.fixtureId);
+      if (fixture) {
+        await store.updateFixture(fixture.id, {
+          recordingId: null,
+          status: "deleted"
+        });
+      }
+    }
+
+    response.json({ deleted: true, fileDeleted });
   })
 );
 

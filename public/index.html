@@ -546,6 +546,18 @@
       </form>
     </dialog>
 
+    <dialog class="dialog dialog--confirm" data-delete-dialog>
+      <form method="dialog">
+        <div class="confirm-mark confirm-mark--danger"><i data-lucide="trash-2"></i></div>
+        <h2>删除这段录像？</h2>
+        <p data-delete-copy>录像会从本机录像库中移除，且无法撤销。</p>
+        <div class="dialog-actions dialog-actions--center">
+          <button class="button button--secondary" value="cancel">取消</button>
+          <button class="button button--danger" value="confirm">确认删除</button>
+        </div>
+      </form>
+    </dialog>
+
     <section class="player-layer" data-player-layer hidden aria-label="录像播放器">
       <div class="player-shell">
         <header class="player-header">
