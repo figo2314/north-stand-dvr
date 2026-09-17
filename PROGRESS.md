@@ -24,6 +24,11 @@ Updated: 2026-09-16
 - `npm test`: 15 tests passed.
 - `npm run test:ui`: 5 browser tests passed.
 - A real M3U full replay was captured for 60 seconds and retained for playback.
+- The VM deployment now uses Ubuntu's native FFmpeg through
+  `deploy/ffmpeg-host.sh`; the static glibc build was confirmed to crash only
+  when resolving hostnames.
+- The Docker service uses an IPv6-enabled dual-stack network because the M3U
+  source resolves to IPv6 only.
 - `/api/state` responded successfully.
 - The configured M3U source returned 137 channels and 13 sports channels.
 
