@@ -6,6 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
 const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
+const { createBasicAuth, parseBasicUsers } = require("./auth");
 const { JsonStore } = require("./store");
 const {
   getActiveJobs,
@@ -289,6 +290,17 @@ async function addImportedRecording({
 
 const app = express();
 app.disable("x-powered-by");
+const basicAuth = createBasicAuth({
+  users: parseBasicUsers(process.env.APP_BASIC_USERS),
+  realm: process.env.APP_BASIC_REALM || "North Stand DVR"
+});
+app.use((request, response, next) => {
+  if (request.path === "/api/health") {
+    next();
+    return;
+  }
+  basicAuth(request, response, next);
+});
 app.use(express.json({ limit: "256kb" }));
 app.use(express.static(path.join(ROOT, "public")));
 app.get("/vendor/lucide.js", (request, response) => {
