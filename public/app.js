@@ -588,7 +588,17 @@
               <i data-lucide="${statusIcon(fixture.status)}"></i>
               ${escapeHtml(statusLabel(fixture.status))}
             </span>
-            <div class="schedule-actions">${action}</div>
+            <div class="schedule-actions">
+              <a
+                class="row-action"
+                href="/lineup.html?id=${encodeURIComponent(fixture.id)}"
+                aria-label="查看首发阵容"
+                title="首发阵容"
+              >
+                <i data-lucide="shirt"></i>
+              </a>
+              ${action}
+            </div>
             ${
               isRecording
                 ? `

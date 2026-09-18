@@ -49,6 +49,20 @@ npm run start:lan
 
 播放列表中的频道地址全部指向本服务，原始直播源和鉴权参数不会暴露给播放器。令牌只能读取电视内容，可随时在设置页重新生成。
 
+## 首发阵容
+
+比赛日程和比赛雷达中的“首发阵容”按钮会打开独立阵型页。服务会先通过 TheSportsDB 免费源匹配球队和比赛，再使用 API-Football 查询阵容；免费数据不完整时可在页面底部手动粘贴双方首发补全。
+
+可选环境变量：
+
+```text
+FOOTBALL_API_PROVIDER=auto
+FOOTBALL_API_KEY=...
+FOOTBALL_API_BASE=https://v3.football.api-sports.io
+```
+
+API-Football 免费套餐通常只允许历史赛季；TheSportsDB 免费源可以匹配当前赛程，但完整官方首发仍以数据源实际返回内容为准。
+
 ## Linux VM 使用主机 FFmpeg
 
 如果 VPS 主机已经安装 FFmpeg，但容器内的静态二进制不稳定，可以使用 VM override：

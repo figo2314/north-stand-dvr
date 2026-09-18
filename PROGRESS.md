@@ -54,6 +54,9 @@ Updated: 2026-09-16
   the application shell for mobile use.
 - Read-only TV endpoints now publish M3U, XMLTV EPG, and proxied HLS streams
   for Apple TV and other IPTV players without exposing upstream source URLs.
+- Match lineups are resolved from TheSportsDB and API-Football, cached on the
+  fixture, displayed on a dedicated pitch page, and can be completed manually
+  when a free provider only returns partial data.
 - A dedicated football live page filters sports groups and football matches
   from the same playlists while reusing the full live player and health tools.
 - `/api/state` responded successfully.

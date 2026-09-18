@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 
 test("does not expose an unrevealed score in the browser", async ({ page }) => {
   await page.goto("/#home");
+  await page.locator("[data-mobile-library-open]").click();
   await expect(page.locator(".recording-row").first()).toBeVisible();
   expect(await page.locator(".recording-row").count()).toBeGreaterThan(0);
   await expect(page.locator(".recording-result").first()).toContainText("比分已封存");
@@ -22,6 +23,7 @@ test("keeps the player mask enabled and the layout inside the viewport", async (
   page
 }) => {
   await page.goto("/#home");
+  await page.locator("[data-mobile-library-open]").click();
   await page.locator("[data-play]").first().click();
   await expect(page.locator("[data-player-layer]")).toBeVisible();
   await expect(page.locator("[data-score-shield]")).toBeVisible();
@@ -55,12 +57,12 @@ test("cancel actions do not create an unintended fixture or reveal", async ({
   await expect(page.locator("[data-schedule-dialog]")).not.toBeVisible();
 
   await page.goto("/#home");
+  await page.locator("[data-mobile-library-open]").click();
   await page.locator("[data-reveal]").first().click();
   await expect(page.locator("[data-reveal-dialog]")).toBeVisible();
   await page.locator("[data-reveal-dialog] [value=cancel]").click();
   await expect(page.locator("[data-reveal-dialog]")).not.toBeVisible();
 
-  await page.goto("/#home");
   await page.locator("[data-delete-recording]").first().click();
   await expect(page.locator("[data-delete-dialog]")).toBeVisible();
   await page.locator("[data-delete-dialog] [value=cancel]").click();
@@ -188,6 +190,7 @@ test("radar starts a replay recording for an ended match", async ({ page }) => {
   });
 
   await page.goto("/mockup.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-radar-league]").selectOption("all");
   const replayButton = page.getByRole("button", { name: "录制回放" });
   await expect(replayButton).toBeVisible();
   await replayButton.click();
@@ -244,6 +247,10 @@ test("radar filters and searches matches", async ({ page }) => {
   });
 
   await page.goto("/mockup.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-radar-league]")).toHaveValue("英超");
+  await expect(page.locator(".radar-match")).toHaveCount(1);
+  await expect(page.locator(".radar-match")).toContainText("阿森纳");
+  await page.locator("[data-radar-league]").selectOption("all");
   await expect(page.locator(".radar-match")).toHaveCount(2);
 
   await page.getByRole("button", { name: "待开赛", exact: true }).click();
@@ -727,7 +734,9 @@ test("Apple TV playlist settings expose and test the read-only subscription", as
   await expect(page.locator("[data-toast-region]")).toContainText("2 个频道");
 
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
-  await page.locator(".support-panel [data-open-tv-dialog]").click();
+  await page
+    .locator(".home-mobile-launcher [data-open-tv-dialog]")
+    .click();
   await expect(page.locator("[data-tv-dialog]")).toBeVisible();
   await expect(page.locator("[data-tv-dialog-playlist]")).toHaveValue(
     /api\/tv\/playlist\.m3u/
@@ -784,6 +793,65 @@ test("channel page opens TVB Jade by default when available", async ({ page }) =
   await expect(
     page.locator("[data-channel-group-filter='港澳台频道']")
   ).toContainText("港澳台频道");
+});
+
+test("lineup page renders a confirmed formation", async ({ page }) => {
+  const players = (prefix) =>
+    Array.from({ length: 11 }, (_, index) => ({
+      id: `${prefix}-${index}`,
+      name: `${prefix}球员${index + 1}`,
+      number: index + 1,
+      position: index === 0 ? "G" : "P",
+      grid: index === 0 ? "1:1" : `${Math.min(4, Math.floor(index / 4) + 2)}:${index % 4 + 1}`
+    }));
+  await page.route("**/api/state", async (route) => {
+    await route.fulfill({
+      json: {
+        settings: {},
+        fixtures: [
+          {
+            id: "lineup-fixture",
+            home: "阿森纳",
+            away: "切尔西",
+            competition: "英超",
+            kickoffAt: "2026-09-19T14:00:00.000Z",
+            lineup: {
+              status: "confirmed",
+              provider: "thesportsdb",
+              home: {
+                name: "Arsenal",
+                formation: "4-3-3",
+                startXI: players("主队"),
+                substitutes: []
+              },
+              away: {
+                name: "Chelsea",
+                formation: "4-2-3-1",
+                startXI: players("客队"),
+                substitutes: []
+              }
+            }
+          }
+        ],
+        recordings: [],
+        health: {}
+      }
+    });
+  });
+
+  await page.goto("/lineup.html?id=lineup-fixture", {
+    waitUntil: "domcontentloaded"
+  });
+  await expect(page.locator("[data-lineup-status]")).toContainText("官方首发");
+  await expect(page.locator("[data-lineup-home-formation]")).toContainText(
+    "4-3-3"
+  );
+  await expect(page.locator("[data-lineup-home-pitch] .lineup-player")).toHaveCount(
+    11
+  );
+  await expect(page.locator("[data-lineup-away-pitch] .lineup-player")).toHaveCount(
+    11
+  );
 });
 
 test("channel list virtualizes large catalogs", async ({ page }) => {

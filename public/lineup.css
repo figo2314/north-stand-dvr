@@ -1,0 +1,344 @@
+.lineup-shell {
+  min-height: 100vh;
+  background: var(--canvas);
+}
+
+.lineup-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+  gap: 24px;
+  align-items: center;
+  min-height: 72px;
+  padding: 10px clamp(18px, 4vw, 48px);
+  color: var(--rail-ink);
+  background: var(--rail);
+}
+
+.lineup-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lineup-brand strong,
+.lineup-brand small {
+  display: block;
+}
+
+.lineup-brand small {
+  margin-top: 2px;
+  color: var(--rail-muted);
+  font-size: 0.68rem;
+}
+
+.lineup-header nav {
+  display: flex;
+  gap: 4px;
+}
+
+.lineup-header nav a {
+  padding: 8px 11px;
+  color: var(--rail-muted);
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.lineup-header nav a:hover {
+  color: white;
+  background: var(--rail-raised);
+}
+
+.lineup-provider {
+  justify-self: end;
+  color: var(--rail-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.lineup-main {
+  display: grid;
+  gap: 24px;
+  width: min(1400px, 100%);
+  margin: 0 auto;
+  padding: 28px clamp(16px, 3vw, 42px) 54px;
+}
+
+.lineup-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.lineup-hero h1 {
+  margin-top: 4px;
+  font-size: 2rem;
+}
+
+.lineup-hero p:last-child {
+  margin-top: 8px;
+  color: var(--ink-muted);
+  font-size: 0.86rem;
+}
+
+.lineup-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lineup-status {
+  padding: 7px 10px;
+  color: var(--ink-muted);
+  background: var(--surface-muted);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 720;
+}
+
+.lineup-status.is-ready {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.lineup-status.is-partial {
+  color: oklch(0.5 0.12 75);
+  background: var(--amber-soft);
+}
+
+.lineup-status.is-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.lineup-state {
+  padding: 42px 20px;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.lineup-pitches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.lineup-team {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.lineup-team > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.lineup-team header span {
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+}
+
+.lineup-team header h2 {
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.lineup-team header strong {
+  color: var(--brand);
+  font-size: 0.78rem;
+}
+
+.football-pitch {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  min-height: 620px;
+  padding: 38px 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(oklch(0.38 0.09 153), oklch(0.34 0.08 153));
+}
+
+.football-pitch::before,
+.football-pitch::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.football-pitch::before {
+  inset: 18px;
+  border: 2px solid oklch(1 0 0 / 0.36);
+}
+
+.football-pitch::after {
+  top: 50%;
+  left: 18px;
+  width: calc(100% - 36px);
+  border-top: 2px solid oklch(1 0 0 / 0.3);
+}
+
+.lineup-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--players), minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.lineup-player {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: white;
+  text-align: center;
+}
+
+.lineup-player b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--rail);
+  background: white;
+  border-radius: 50%;
+  font-size: 0.72rem;
+}
+
+.lineup-player strong {
+  max-width: 100px;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px oklch(0.1 0 0 / 0.5);
+}
+
+.lineup-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.lineup-details article {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.lineup-details h2 {
+  font-size: 0.9rem;
+}
+
+.lineup-details article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.lineup-details span {
+  padding: 6px 8px;
+  color: var(--ink-muted);
+  background: var(--surface-muted);
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.lineup-manual {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.lineup-manual summary {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.lineup-manual__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 14px;
+}
+
+.lineup-manual textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+@media (max-width: 900px) {
+  .lineup-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .lineup-header nav {
+    display: none;
+  }
+
+  .lineup-pitches,
+  .lineup-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .lineup-header {
+    min-height: 62px;
+    padding: 9px 14px;
+  }
+
+  .lineup-provider {
+    display: none;
+  }
+
+  .lineup-main {
+    padding: 20px 12px 40px;
+  }
+
+  .lineup-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .lineup-hero h1 {
+    font-size: 1.5rem;
+  }
+
+  .lineup-hero__actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .football-pitch {
+    min-height: 520px;
+    padding: 30px 10px;
+  }
+
+  .lineup-manual__fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -5,6 +5,10 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
+const { loadEnvFile } = require("./env");
+
+loadEnvFile(path.resolve(__dirname, "..", ".env"));
+
 const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 const { createBasicAuth, parseBasicUsers } = require("./auth");
 const {
@@ -16,6 +20,12 @@ const {
 const { loadEpg } = require("./epg");
 const { createLiveProxy } = require("./live");
 const { EventLog } = require("./logger");
+const {
+  lineupRefreshDue,
+  parseManualTeam,
+  refreshFixtureLineup,
+  setLineupStoreUpdater
+} = require("./lineups");
 const { JsonStore } = require("./store");
 const {
   buildM3u,
@@ -42,6 +52,13 @@ const DB_PATH = path.join(ROOT, "data", "db.json");
 const store = new JsonStore(DB_PATH);
 const eventLog = new EventLog(path.join(ROOT, "data", "logs.jsonl"));
 const liveProxy = createLiveProxy();
+
+setLineupStoreUpdater(async (fixture, lineup, providerFixtureId) => {
+  await store.updateFixture(fixture.id, {
+    lineup,
+    providerFixtureId: providerFixtureId || fixture.providerFixtureId || null
+  });
+});
 
 const processingJobs = new Map();
 const CHANNEL_CATALOG_TTL_MS = 5 * 60 * 1000;
@@ -387,6 +404,35 @@ async function runScheduler() {
     for (const fixture of scheduled) {
       await attemptScheduledRecording(fixture);
     }
+    if (process.env.FOOTBALL_API_KEY) {
+      const lineupTargets = store.fixtures
+        .filter((fixture) => lineupRefreshDue(fixture))
+        .slice(0, 3);
+      for (const fixture of lineupTargets) {
+        const previousStatus = fixture.lineup?.status || null;
+        try {
+          const lineup = await refreshFixtureLineup(fixture);
+          if (
+            lineup.status === "confirmed" &&
+            previousStatus !== "confirmed"
+          ) {
+            await eventLog.record(
+              "info",
+              "lineup.confirmed",
+              "已获取官方首发阵容",
+              fixtureLogContext(fixture)
+            );
+          }
+        } catch (error) {
+          await eventLog.record(
+            "warning",
+            "lineup.failed",
+            error.message,
+            fixtureLogContext(fixture)
+          );
+        }
+      }
+    }
   } catch (error) {
     lastSchedulerError = error.message;
     console.error("[scheduler]", error);
@@ -730,6 +776,73 @@ app.post(
     );
     response.status(201).json({ fixture });
     await runScheduler();
+  })
+);
+
+app.post(
+  "/api/fixtures/:id/lineup/refresh",
+  asyncRoute(async (request, response) => {
+    const fixture = store.findFixture(request.params.id);
+    if (!fixture) {
+      throw notFound("没有找到这场比赛");
+    }
+    const lineup = await refreshFixtureLineup(fixture, { force: true });
+    response.json({ lineup });
+  })
+);
+
+app.post(
+  "/api/fixtures/:id/lineup/manual",
+  asyncRoute(async (request, response) => {
+    const fixture = store.findFixture(request.params.id);
+    if (!fixture) {
+      throw notFound("没有找到这场比赛");
+    }
+    const home = parseManualTeam(
+      requireString(request.body?.homeText, "主队首发", 8000)
+    );
+    const away = parseManualTeam(
+      requireString(request.body?.awayText, "客队首发", 8000)
+    );
+    if (home.startXI.length < 7 || away.startXI.length < 7) {
+      throw badRequest("双方首发至少需要各识别出 7 名球员");
+    }
+    const lineup = {
+      status: "manual",
+      provider: "manual",
+      fetchedAt: new Date().toISOString(),
+      lastAttemptAt: new Date().toISOString(),
+      attempts: 0,
+      quotaRemaining: fixture.lineup?.quotaRemaining ?? null,
+      home,
+      away,
+      error: null
+    };
+    await store.updateFixture(fixture.id, { lineup });
+    await eventLog.record(
+      "info",
+      "lineup.manual",
+      "已保存手动录入的首发阵容",
+      fixtureLogContext(fixture)
+    );
+    response.json({ lineup });
+  })
+);
+
+app.get(
+  "/api/lineups/status",
+  asyncRoute(async (request, response) => {
+    const quotas = store.fixtures
+      .map((fixture) => Number(fixture.lineup?.quotaRemaining))
+      .filter(Number.isFinite);
+    response.json({
+      configured: Boolean(process.env.FOOTBALL_API_KEY),
+      provider: process.env.FOOTBALL_API_PROVIDER || "api-football",
+      quotaRemaining: quotas.length ? Math.min(...quotas) : null,
+      confirmed: store.fixtures.filter(
+        (fixture) => fixture.lineup?.status === "confirmed"
+      ).length
+    });
   })
 );
 

@@ -47,6 +47,7 @@
     channels: [],
     matches: [],
     filter: "all",
+    league: "英超",
     query: "",
     hls: null,
     liveMatch: null,
@@ -222,12 +223,36 @@
     return `${match.feed || "中文解说"}${match.commentator ? ` · ${match.commentator}` : ""}`;
   }
 
+  function renderLeagueOptions() {
+    const select = $("[data-radar-league]");
+    const leagues = [
+      ...new Set(app.matches.map((match) => match.league).filter(Boolean))
+    ].sort((left, right) => left.localeCompare(right, "zh-CN"));
+    if (!leagues.includes("英超")) {
+      leagues.unshift("英超");
+    }
+    if (app.league !== "all" && !leagues.includes(app.league)) {
+      app.league = "英超";
+    }
+    select.innerHTML = [
+      '<option value="all">全部赛事</option>',
+      ...leagues.map(
+        (league) =>
+          `<option value="${escapeHtml(league)}">${escapeHtml(league)}</option>`
+      )
+    ].join("");
+    select.value = app.league;
+  }
+
   function renderMatches() {
     const list = $("[data-match-list]");
     const order = { live: 0, upcoming: 1, ended: 2 };
     const query = app.query.trim().toLocaleLowerCase("zh-CN");
     const matches = [...app.matches]
       .filter((match) => app.filter === "all" || match.status === app.filter)
+      .filter(
+        (match) => app.league === "all" || match.league === app.league
+      )
       .filter((match) => {
         if (!query) {
           return true;
@@ -328,6 +353,13 @@
               )}</span>
             </div>
             <div class="radar-actions">
+              <a
+                class="radar-watch"
+                href="/lineup.html?id=${encodeURIComponent(match.fixtureId || match.id)}"
+              >
+                <i data-lucide="shirt"></i>
+                首发阵容
+              </a>
               <button
                 class="radar-watch"
                 type="button"
@@ -441,6 +473,7 @@
       }
       app.channels = payload.channels;
       app.matches = payload.channels.map(parseChannel).filter(Boolean);
+      renderLeagueOptions();
       state.className = "mock-source-state is-ready";
       state.innerHTML = `<i data-lucide="circle-check"></i>源站已更新 · ${payload.count} 个频道`;
       renderSummary();
@@ -805,6 +838,11 @@
       return;
     }
     app.query = event.target.value;
+    renderMatches();
+  });
+
+  $("[data-radar-league]").addEventListener("change", (event) => {
+    app.league = event.target.value;
     renderMatches();
   });
 

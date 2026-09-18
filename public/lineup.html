@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172039" />
+    <title>首发阵容 · 北看台</title>
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/lineup.css" />
+  </head>
+  <body class="lineup-shell">
+    <header class="lineup-header">
+      <a class="lineup-brand" href="/#home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <path d="M20 4 35 11v9c0 8.4-6.1 14.1-15 17-8.9-2.9-15-8.6-15-17v-9L20 4Z" />
+            <path d="m13 27 7-15 7 15h-4.2l-1.2-3h-3.4l-1.1 3H13Zm6.2-6h1.8L20 17.8 19.2 21Z" />
+          </svg>
+        </span>
+        <span>
+          <strong>北看台</strong>
+          <small>首发阵容</small>
+        </span>
+      </a>
+      <nav>
+        <a href="/#home">待看录像</a>
+        <a href="/#schedule">录制日程</a>
+        <a href="/mockup.html">比赛雷达</a>
+        <a href="/channels.html">电视直播</a>
+      </nav>
+      <span class="lineup-provider" data-lineup-provider>API-Football</span>
+    </header>
+
+    <main class="lineup-main">
+      <section class="lineup-hero">
+        <div>
+          <p class="day-line" data-lineup-competition>比赛阵容</p>
+          <h1 data-lineup-title>正在读取比赛</h1>
+          <p data-lineup-kickoff>请稍候…</p>
+        </div>
+        <div class="lineup-hero__actions">
+          <span class="lineup-status" data-lineup-status>读取中</span>
+          <button class="button button--primary" type="button" data-lineup-refresh>
+            <i data-lucide="refresh-cw"></i>
+            查询最新阵容
+          </button>
+        </div>
+      </section>
+
+      <section class="lineup-state" data-lineup-state hidden></section>
+
+      <section class="lineup-pitches" data-lineup-pitches hidden>
+        <article class="lineup-team">
+          <header>
+            <div>
+              <span data-lineup-home-label>主队</span>
+              <h2 data-lineup-home-name>主队</h2>
+            </div>
+            <strong data-lineup-home-formation>阵型待识别</strong>
+          </header>
+          <div class="football-pitch" data-lineup-home-pitch></div>
+        </article>
+        <article class="lineup-team">
+          <header>
+            <div>
+              <span data-lineup-away-label>客队</span>
+              <h2 data-lineup-away-name>客队</h2>
+            </div>
+            <strong data-lineup-away-formation>阵型待识别</strong>
+          </header>
+          <div class="football-pitch" data-lineup-away-pitch></div>
+        </article>
+      </section>
+
+      <section class="lineup-details" data-lineup-details hidden>
+        <article>
+          <h2>主队替补</h2>
+          <div data-lineup-home-subs></div>
+        </article>
+        <article>
+          <h2>客队替补</h2>
+          <div data-lineup-away-subs></div>
+        </article>
+      </section>
+
+      <details class="lineup-manual" data-lineup-manual>
+        <summary>官方首发没有数据？手动粘贴阵容</summary>
+        <div class="lineup-manual__fields">
+          <label class="field">
+            <span>主队首发</span>
+            <textarea data-lineup-home-text rows="8"></textarea>
+          </label>
+          <label class="field">
+            <span>客队首发</span>
+            <textarea data-lineup-away-text rows="8"></textarea>
+          </label>
+        </div>
+        <button class="button button--secondary" type="button" data-lineup-save>
+          <i data-lucide="save"></i>
+          保存手动阵容
+        </button>
+      </details>
+    </main>
+
+    <div class="toast-region" data-toast-region aria-live="polite"></div>
+    <script src="/vendor/lucide.js"></script>
+    <script src="/lineup.js"></script>
+    <script src="/pwa.js"></script>
+  </body>
+</html>

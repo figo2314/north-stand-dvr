@@ -245,6 +245,31 @@
   outline: 2px solid var(--brand-soft);
 }
 
+.radar-league-filter {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font-size: 0.7rem;
+  font-weight: 720;
+}
+
+.radar-league-filter select {
+  max-width: 120px;
+  padding: 0 18px 0 0;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 720;
+  outline: 0;
+}
+
 .radar-filters {
   display: flex;
   padding: 3px;
@@ -412,6 +437,7 @@
   border-radius: var(--radius-md);
   font-size: 0.72rem;
   font-weight: 760;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -799,6 +825,16 @@
   .radar-search,
   .radar-search input {
     width: 100%;
+  }
+
+  .radar-league-filter {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .radar-league-filter select {
+    max-width: none;
+    flex: 1;
   }
 
   .radar-filters {
