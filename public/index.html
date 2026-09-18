@@ -185,6 +185,10 @@
                   <i data-lucide="folder-search"></i>
                   <span>导入</span>
                 </button>
+                <button type="button" data-open-tv-dialog>
+                  <i data-lucide="cast"></i>
+                  <span>电视</span>
+                </button>
                 <button type="button" data-view="logs">
                   <i data-lucide="scroll-text"></i>
                   <span>日志</span>
@@ -250,6 +254,24 @@
                   <div data-next-fixture>
                     <p class="empty-inline">还没有安排下一场。</p>
                   </div>
+                </section>
+
+                <section class="support-panel" aria-labelledby="apple-tv-title">
+                  <div class="support-heading">
+                    <span class="section-icon"><i data-lucide="cast"></i></span>
+                    <div>
+                      <h2 id="apple-tv-title">Apple TV 与 IPTV</h2>
+                      <p>直接在电视播放器里订阅</p>
+                    </div>
+                  </div>
+                  <button
+                    class="button button--secondary button--full"
+                    type="button"
+                    data-open-tv-dialog
+                  >
+                    <i data-lucide="link"></i>
+                    查看电视订阅地址
+                  </button>
                 </section>
 
                 <section class="support-panel" aria-labelledby="storage-title">
@@ -675,6 +697,70 @@
         <span>设置</span>
       </button>
     </nav>
+
+    <dialog class="dialog tv-subscription-dialog" data-tv-dialog>
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="day-line">Apple TV · IPTV</p>
+            <h2>电视订阅入口</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="tv-subscription-copy">
+          <p>
+            在 Apple TV 安装支持 M3U 订阅的 IPTV 播放器，粘贴下面的地址即可。
+            当前默认无需令牌。
+          </p>
+          <ol>
+            <li>确保电视与服务器在同一网络，或服务器已部署到公网。</li>
+            <li>在播放器中选择“添加 M3U 订阅”。</li>
+            <li>粘贴 M3U 地址；如果播放器支持，再填写 EPG 地址。</li>
+          </ol>
+        </div>
+        <div class="tv-subscription-fields">
+          <label class="field field--wide">
+            <span>M3U 订阅地址</span>
+            <div class="field-action">
+              <input data-tv-dialog-playlist readonly />
+              <button
+                class="button button--secondary button--compact"
+                type="button"
+                data-tv-dialog-copy-playlist
+              >
+                复制
+              </button>
+            </div>
+          </label>
+          <label class="field field--wide">
+            <span>EPG 节目单</span>
+            <div class="field-action">
+              <input data-tv-dialog-epg readonly />
+              <button
+                class="button button--secondary button--compact"
+                type="button"
+                data-tv-dialog-copy-epg
+              >
+                复制
+              </button>
+            </div>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel">关闭</button>
+          <button
+            class="button button--primary"
+            type="button"
+            data-tv-dialog-copy-playlist
+          >
+            <i data-lucide="copy"></i>
+            复制 M3U
+          </button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog class="dialog" data-schedule-dialog>
       <form method="dialog" data-schedule-form>

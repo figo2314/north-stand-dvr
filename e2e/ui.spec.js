@@ -535,6 +535,9 @@ test("mobile home shows a compact launcher and opens the recording library", asy
   await expect(
     page.locator(".home-live-entry:not(.home-live-entry--football)")
   ).toContainText("电视直播");
+  await expect(
+    page.locator(".home-launcher-quick [data-open-tv-dialog]")
+  ).toBeVisible();
   await expect(page.locator(".home-live-entry--football")).toContainText(
     "足球直播"
   );
@@ -722,6 +725,13 @@ test("Apple TV playlist settings expose and test the read-only subscription", as
   await expect(page.locator("[data-tv-token]")).toHaveValue("tv-token");
   await page.getByRole("button", { name: "测试订阅" }).click();
   await expect(page.locator("[data-toast-region]")).toContainText("2 个频道");
+
+  await page.goto("/#home", { waitUntil: "domcontentloaded" });
+  await page.locator(".support-panel [data-open-tv-dialog]").click();
+  await expect(page.locator("[data-tv-dialog]")).toBeVisible();
+  await expect(page.locator("[data-tv-dialog-playlist]")).toHaveValue(
+    /api\/tv\/playlist\.m3u/
+  );
 });
 
 test("channel page opens TVB Jade by default when available", async ({ page }) => {

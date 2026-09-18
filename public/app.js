@@ -859,8 +859,11 @@
       $("[data-tv-playlist-url]").value = app.tvConfig.playlistUrl || "";
       $("[data-tv-epg-url]").value = app.tvConfig.epgUrl || "";
       $("[data-tv-token]").value = app.tvConfig.token || "";
+      $("[data-tv-dialog-playlist]").value = app.tvConfig.playlistUrl || "";
+      $("[data-tv-dialog-epg]").value = app.tvConfig.epgUrl || "";
     } catch (error) {
       $("[data-tv-playlist-url]").value = error.message;
+      $("[data-tv-dialog-playlist]").value = error.message;
     }
   }
 
@@ -1735,6 +1738,21 @@
 
       if (event.target.closest("[data-import-open]")) {
         $("[data-import-dialog]").showModal();
+        return;
+      }
+
+      if (event.target.closest("[data-open-tv-dialog]")) {
+        $("[data-tv-dialog]").showModal();
+        return;
+      }
+
+      if (event.target.closest("[data-tv-dialog-copy-playlist]")) {
+        copyText($("[data-tv-dialog-playlist]").value, "M3U 订阅地址");
+        return;
+      }
+
+      if (event.target.closest("[data-tv-dialog-copy-epg]")) {
+        copyText($("[data-tv-dialog-epg]").value, "EPG 地址");
         return;
       }
 
