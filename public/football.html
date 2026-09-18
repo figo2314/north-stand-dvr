@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#172039" />
-    <title>电视直播 · 北看台</title>
+    <title>足球直播 · 北看台</title>
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/channels.css" />
   </head>
-  <body class="channel-shell">
+  <body class="channel-shell" data-channel-scope="football">
     <header class="channel-header">
       <a class="channel-brand" href="/">
         <span class="brand-mark" aria-hidden="true">
@@ -21,18 +21,18 @@
         </span>
         <span>
           <strong>北看台</strong>
-          <small>电视直播</small>
+          <small>足球直播</small>
         </span>
       </a>
       <nav>
         <a href="/">待看录像</a>
         <a href="/mockup.html">比赛雷达</a>
-        <a href="/football.html">足球直播</a>
-        <a class="is-active" href="/channels.html">电视直播</a>
+        <a href="/channels.html">电视直播</a>
+        <a class="is-active" href="/football.html">足球直播</a>
       </nav>
       <span class="channel-source-state" data-source-state>
         <i data-lucide="loader-circle"></i>
-        正在读取直播源
+        正在读取足球源
       </span>
     </header>
 
@@ -40,30 +40,17 @@
       <section class="channel-player-panel" aria-labelledby="channel-title">
         <div class="channel-stage" data-channel-stage>
           <video data-channel-video playsinline preload="metadata"></video>
-          <span
-            class="channel-brightness"
-            data-channel-brightness
-            aria-hidden="true"
-          ></span>
+          <span class="channel-brightness" data-channel-brightness aria-hidden="true"></span>
           <div class="channel-message" data-channel-message>
-            <i data-lucide="tv-minimal-play"></i>
-            <strong>选择一个频道开始播放</strong>
-            <p>首次连接通常需要几秒钟。</p>
-            <button
-              class="channel-message__retry"
-              type="button"
-              data-channel-retry
-              hidden
-            >
+            <i data-lucide="circle-play"></i>
+            <strong>选择一场足球直播</strong>
+            <p>直播、回放和备用线路会集中显示在右侧。</p>
+            <button class="channel-message__retry" type="button" data-channel-retry hidden>
               <i data-lucide="refresh-cw"></i>
               重新连接
             </button>
           </div>
-          <div
-            class="channel-quality-prompt"
-            data-channel-quality-prompt
-            hidden
-          >
+          <div class="channel-quality-prompt" data-channel-quality-prompt hidden>
             <div>
               <strong>检测到连续卡顿</strong>
               <span data-channel-quality-copy>是否切换到更低码率线路？</span>
@@ -76,8 +63,8 @@
 
         <div class="channel-player-heading">
           <div>
-            <p class="day-line" data-channel-group>电视直播</p>
-            <h1 id="channel-title" data-channel-title>请选择频道</h1>
+            <p class="day-line" data-channel-group>足球直播</p>
+            <h1 id="channel-title" data-channel-title>请选择比赛</h1>
           </div>
           <div class="channel-live-stats" aria-live="polite">
             <span data-channel-speed>速度检测中</span>
@@ -98,33 +85,13 @@
               <option value="-1">自动</option>
             </select>
           </label>
-          <button
-            class="channel-control"
-            type="button"
-            data-channel-landscape
-            aria-label="横屏播放"
-            title="横屏播放"
-          >
+          <button class="channel-control" type="button" data-channel-landscape aria-label="横屏播放" title="横屏播放">
             <i data-lucide="rotate-cw-square"></i>
           </button>
-          <button
-            class="channel-control"
-            type="button"
-            data-channel-pip
-            aria-label="画中画"
-            title="画中画"
-            hidden
-          >
+          <button class="channel-control" type="button" data-channel-pip aria-label="画中画" title="画中画" hidden>
             <i data-lucide="picture-in-picture-2"></i>
           </button>
-          <button
-            class="channel-control"
-            type="button"
-            data-channel-cast
-            aria-label="投屏播放"
-            title="投屏播放"
-            hidden
-          >
+          <button class="channel-control" type="button" data-channel-cast aria-label="投屏播放" title="投屏播放" hidden>
             <i data-lucide="cast"></i>
           </button>
           <button class="channel-control channel-control--push" type="button" data-channel-fullscreen aria-label="全屏">
@@ -136,25 +103,15 @@
       <aside class="channel-browser" aria-labelledby="channel-list-title">
         <div class="channel-browser__heading">
           <div>
-            <h2 id="channel-list-title">频道列表</h2>
-            <p data-channel-summary>正在读取频道…</p>
+            <h2 id="channel-list-title">足球比赛</h2>
+            <p data-channel-summary>正在读取足球频道…</p>
           </div>
           <div class="channel-browser__actions">
-            <button
-              class="text-button channel-preflight"
-              type="button"
-              data-channel-preflight
-            >
+            <button class="text-button channel-preflight" type="button" data-channel-preflight>
               <i data-lucide="scan-search"></i>
               <span data-preflight-label>预检列表</span>
             </button>
-            <button
-              class="text-button channel-refresh"
-              type="button"
-              data-channel-refresh
-              aria-label="刷新直播源"
-              title="刷新直播源"
-            >
+            <button class="text-button channel-refresh" type="button" data-channel-refresh aria-label="刷新足球源" title="刷新足球源">
               <i data-lucide="refresh-cw"></i>
             </button>
           </div>
@@ -162,7 +119,7 @@
 
         <label class="channel-search">
           <i data-lucide="search"></i>
-          <input type="search" placeholder="搜索频道或分组" autocomplete="off" data-channel-search />
+          <input type="search" placeholder="搜索球队、赛事或解说" autocomplete="off" data-channel-search />
         </label>
 
         <div class="channel-groups" data-channel-groups></div>
@@ -176,8 +133,8 @@
       <form method="dialog">
         <div class="dialog-heading">
           <div>
-            <p class="day-line">频道详情</p>
-            <h2 data-channel-detail-title>频道</h2>
+            <p class="day-line">比赛详情</p>
+            <h2 data-channel-detail-title>比赛</h2>
           </div>
           <button class="icon-button" value="cancel" aria-label="关闭详情">
             <i data-lucide="x"></i>
@@ -186,13 +143,9 @@
         <div class="channel-detail-body" data-channel-detail-body></div>
         <div class="dialog-actions">
           <button class="button button--secondary" value="cancel">关闭</button>
-          <button
-            class="button button--primary"
-            type="button"
-            data-channel-detail-play
-          >
+          <button class="button button--primary" type="button" data-channel-detail-play>
             <i data-lucide="play"></i>
-            播放频道
+            播放比赛
           </button>
         </div>
       </form>
@@ -211,9 +164,9 @@
         <i data-lucide="radar"></i>
         <span>雷达</span>
       </a>
-      <a class="mobile-tab is-active" href="/channels.html" aria-current="page">
-        <i data-lucide="tv-minimal-play"></i>
-        <span>直播</span>
+      <a class="mobile-tab is-active" href="/football.html" aria-current="page">
+        <i data-lucide="circle-play"></i>
+        <span>足球</span>
       </a>
       <a class="mobile-tab" href="/#settings">
         <i data-lucide="sliders-horizontal"></i>

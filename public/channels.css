@@ -103,11 +103,30 @@
   overflow: hidden;
 }
 
+.channel-player-panel:fullscreen,
+.channel-player-panel:-webkit-full-screen {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  width: 100vw;
+  height: 100dvh;
+  background: oklch(0.1 0.02 258);
+  border: 0;
+  border-radius: 0;
+}
+
+.channel-player-panel:fullscreen .channel-stage,
+.channel-player-panel:-webkit-full-screen .channel-stage {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
 .channel-stage {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: oklch(0.11 0.02 258);
+  touch-action: none;
 }
 
 .channel-stage video {
@@ -116,9 +135,91 @@
   object-fit: contain;
 }
 
+.channel-brightness {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: black;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms var(--ease-out);
+}
+
+.channel-gesture-hud {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  min-width: 92px;
+  padding: 9px 12px;
+  color: white;
+  background: oklch(0.1 0.02 258 / 0.82);
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 720;
+  text-align: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.channel-quality-prompt {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 11px 12px;
+  color: white;
+  background: oklch(0.1 0.02 258 / 0.9);
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 10px;
+}
+
+.channel-quality-prompt[hidden] {
+  display: none;
+}
+
+.channel-quality-prompt strong,
+.channel-quality-prompt span {
+  display: block;
+}
+
+.channel-quality-prompt strong {
+  font-size: 0.76rem;
+}
+
+.channel-quality-prompt span {
+  margin-top: 3px;
+  color: oklch(0.78 0.02 255);
+  font-size: 0.68rem;
+}
+
+.channel-quality-prompt button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: white;
+  background: oklch(1 0 0 / 0.1);
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.channel-quality-prompt button:first-of-type {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
 .channel-message {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -184,6 +285,9 @@
   justify-content: space-between;
   gap: 20px;
   padding: 18px 20px 12px;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
 }
 
 .channel-player-heading h1 {
@@ -203,6 +307,34 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px 18px;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.channel-player-panel.is-controls-hidden .channel-player-heading {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
+
+.channel-player-panel.is-controls-hidden .channel-player-controls {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(9px);
+}
+
+.channel-player-panel.is-channel-switching
+  .channel-player-heading
+  > div:first-child {
+  animation: channel-title-in 240ms var(--ease-out);
+}
+
+@keyframes channel-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
 }
 
 .channel-control {
@@ -408,11 +540,26 @@
   border-top: 1px solid var(--line);
 }
 
+.channel-virtual-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.channel-virtual-window {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  will-change: transform;
+}
+
 .channel-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
+  grid-template-columns: minmax(0, 1fr) 46px 52px;
   align-items: center;
-  min-height: 66px;
+  height: 78px;
+  min-height: 78px;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
 
@@ -435,7 +582,8 @@
   gap: 11px;
   align-items: center;
   min-width: 0;
-  min-height: 66px;
+  height: 78px;
+  min-height: 78px;
   padding: 10px 4px 10px 18px;
   color: inherit;
   background: transparent;
@@ -446,6 +594,7 @@
 }
 
 .channel-mark {
+  position: relative;
   display: grid;
   width: 38px;
   height: 38px;
@@ -455,6 +604,13 @@
   border-radius: 9px;
   font-size: 0.72rem;
   font-weight: 800;
+}
+
+.channel-mark img {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  object-fit: contain;
 }
 
 .channel-row__copy {
@@ -477,6 +633,31 @@
   margin-top: 4px;
   color: var(--ink-muted);
   font-size: 0.72rem;
+}
+
+.channel-row__copy .channel-row__program {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: oklch(0.39 0.07 250);
+  font-size: 0.68rem;
+}
+
+.channel-row__program > span {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-row__program em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
 }
 
 .channel-row__tail {
@@ -539,6 +720,28 @@
     transform 160ms var(--ease-out);
 }
 
+.channel-info-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.channel-info-button:hover {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.channel-info-button svg {
+  width: 17px;
+  height: 17px;
+}
+
 .channel-favorite:hover {
   color: oklch(0.58 0.14 75);
   background: var(--amber-soft);
@@ -566,6 +769,102 @@
   color: var(--ink-muted);
   text-align: center;
   font-size: 0.76rem;
+}
+
+.channel-detail-dialog {
+  width: min(520px, calc(100% - 24px));
+  margin: auto;
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.channel-detail-dialog::backdrop {
+  background: oklch(0.14 0.028 258 / 0.5);
+}
+
+.channel-detail-dialog form {
+  padding: 20px;
+}
+
+.channel-detail-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.channel-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.channel-detail-card {
+  padding: 12px;
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+}
+
+.channel-detail-card span,
+.channel-detail-card strong {
+  display: block;
+}
+
+.channel-detail-card span {
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+}
+
+.channel-detail-card strong {
+  margin-top: 5px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.channel-health-card {
+  padding: 12px;
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+}
+
+.channel-health-card span,
+.channel-health-card strong {
+  display: block;
+}
+
+.channel-health-card span {
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+}
+
+.channel-health-card strong {
+  margin-top: 5px;
+  font-size: 0.76rem;
+}
+
+.channel-health-bars {
+  display: flex;
+  height: 42px;
+  align-items: flex-end;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.channel-health-bars span {
+  width: 100%;
+  min-width: 4px;
+  max-width: 18px;
+  border-radius: 3px 3px 1px 1px;
+}
+
+.channel-health-bars .is-ok {
+  background: var(--success);
+}
+
+.channel-health-bars .is-fail {
+  background: var(--danger);
 }
 
 .channel-skeleton {
@@ -662,5 +961,155 @@
 
   .channel-message__retry {
     min-height: 44px;
+  }
+
+  .channel-detail-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: min(82dvh, 720px);
+    margin: auto 0 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .channel-detail-dialog form {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .channel-detail-dialog::before {
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 8px auto 0;
+    background: oklch(0.78 0.01 255);
+    border-radius: 999px;
+    content: "";
+  }
+
+  .channel-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 960px) and (max-height: 560px) {
+  .channel-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
+    background: oklch(0.1 0.02 258);
+  }
+
+  .channel-header,
+  .channel-browser,
+  .mobile-tabbar {
+    display: none;
+  }
+
+  .channel-layout {
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .channel-player-panel {
+    position: relative;
+    height: 100dvh;
+    background: oklch(0.1 0.02 258);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .channel-stage {
+    height: 100dvh;
+    aspect-ratio: auto;
+  }
+
+  .channel-player-heading {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 2;
+    align-items: flex-start;
+    padding:
+      calc(10px + env(safe-area-inset-top))
+      calc(16px + env(safe-area-inset-right))
+      12px
+      calc(16px + env(safe-area-inset-left));
+    color: white;
+    background: oklch(0.1 0.02 258 / 0.7);
+    pointer-events: none;
+  }
+
+  .channel-player-heading .day-line {
+    margin-bottom: 3px;
+    color: oklch(0.82 0.06 78);
+    font-size: 0.64rem;
+  }
+
+  .channel-player-heading h1 {
+    max-width: 62vw;
+    overflow: hidden;
+    font-size: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .channel-live-stats {
+    gap: 10px;
+    color: oklch(0.86 0.01 255);
+    font-size: 0.64rem;
+  }
+
+  .channel-player-controls {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    padding:
+      9px
+      calc(16px + env(safe-area-inset-right))
+      calc(9px + env(safe-area-inset-bottom))
+      calc(16px + env(safe-area-inset-left));
+    color: white;
+    background: oklch(0.1 0.02 258 / 0.78);
+  }
+
+  .channel-control {
+    color: white;
+    background: oklch(1 0 0 / 0.1);
+    border-color: oklch(1 0 0 / 0.18);
+  }
+
+  .channel-control:hover {
+    color: white;
+    background: oklch(1 0 0 / 0.18);
+    border-color: oklch(1 0 0 / 0.3);
+  }
+
+  .channel-quality {
+    color: oklch(0.87 0.01 255);
+  }
+
+  .channel-quality select {
+    color: white;
+    background: oklch(0.18 0.02 258);
+    border-color: oklch(1 0 0 / 0.18);
+  }
+
+  .channel-message {
+    padding: 48px 18px;
+  }
+
+  .channel-quality-prompt {
+    right: 76px;
+    bottom: 68px;
+    left: 76px;
   }
 }

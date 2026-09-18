@@ -171,6 +171,7 @@ function createLiveProxy() {
   cleanup.unref?.();
 
   return async function liveProxy(request, response) {
+    const requestedUrl = request.liveSourceUrl || request.query.url;
     let session = request.query.session
       ? sessions.get(String(request.query.session))
       : null;
@@ -178,7 +179,7 @@ function createLiveProxy() {
       throw liveError("直播会话已过期，请重新打开", 410);
     }
     if (!session) {
-      const initialUrl = validateLiveUrl(request.query.url);
+      const initialUrl = validateLiveUrl(requestedUrl);
       session = {
         id: crypto.randomBytes(12).toString("hex"),
         allowedHosts: new Set([initialUrl.hostname]),
@@ -187,7 +188,9 @@ function createLiveProxy() {
       sessions.set(session.id, session);
     }
 
-    const targetUrl = validateLiveUrl(request.query.url);
+    const targetUrl = validateLiveUrl(
+      request.query.session ? request.query.url : requestedUrl
+    );
     if (!session.allowedHosts.has(targetUrl.hostname)) {
       throw liveError("直播会话不允许访问这个地址", 403);
     }

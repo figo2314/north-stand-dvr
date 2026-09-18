@@ -15,7 +15,9 @@
     previewTimer: null,
     logs: [],
     logLevel: "",
-    m3uChannels: []
+    m3uChannels: [],
+    channelSources: [],
+    tvConfig: null
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -320,13 +322,63 @@
     refreshIcons();
   }
 
-  function renderNextFixture() {
-    const container = $("[data-next-fixture]");
+  function nextRecordableFixture() {
     const now = Date.now();
     const fixtures = (app.data?.fixtures || [])
       .filter((fixture) => fixture.record && new Date(fixture.kickoffAt).getTime() >= now)
       .sort((a, b) => new Date(a.kickoffAt) - new Date(b.kickoffAt));
-    const fixture = fixtures[0];
+    return fixtures[0] || null;
+  }
+
+  function renderMobileHome() {
+    const recordings = app.data?.recordings || [];
+    const readyCount = recordings.filter(
+      (recording) => recording.status === "ready"
+    ).length;
+    const activeJob = app.data?.health?.activeJobs?.[0] || null;
+    const activeFixture = activeJob
+      ? app.data?.fixtures?.find((fixture) => fixture.id === activeJob.fixtureId)
+      : null;
+    const nextFixture = nextRecordableFixture();
+    const title = $("[data-mobile-status-title]");
+    const copy = $("[data-mobile-status-copy]");
+    const beacon = $("[data-mobile-status-beacon]");
+    if (!title || !copy || !beacon) {
+      return;
+    }
+    $("[data-mobile-recording-count]").textContent = String(readyCount);
+    beacon.classList.remove("is-ready", "is-error");
+    if (activeFixture) {
+      title.textContent = "正在录制";
+      copy.textContent = `${activeFixture.home} vs ${activeFixture.away}`;
+      beacon.classList.add("is-ready");
+    } else if (!app.data?.health?.ffmpeg?.available) {
+      title.textContent = "录制引擎待检查";
+      copy.textContent = "FFmpeg 或录像目录可能不可用";
+      beacon.classList.add("is-error");
+    } else if (nextFixture) {
+      title.textContent = "下一场已就位";
+      copy.textContent = `${nextFixture.home} vs ${nextFixture.away} · ${new Intl.DateTimeFormat(
+        "zh-CN",
+        {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }
+      ).format(new Date(nextFixture.kickoffAt))}`;
+      beacon.classList.add("is-ready");
+    } else {
+      title.textContent = "今晚空闲";
+      copy.textContent = "可以安排下一场比赛";
+      beacon.classList.add("is-ready");
+    }
+  }
+
+  function renderNextFixture() {
+    const container = $("[data-next-fixture]");
+    const fixture = nextRecordableFixture();
 
     if (!fixture) {
       container.innerHTML = `<p class="empty-inline">还没有安排下一场。</p>`;
@@ -409,6 +461,7 @@
     }
 
     renderOvernightStrip();
+    renderMobileHome();
   }
 
   function renderOvernightStrip() {
@@ -674,6 +727,7 @@
     const form = $("[data-settings-form]");
     const settings = app.data.settings;
     form.elements.m3uUrl.value = settings.m3uUrl || "";
+    form.elements.tvRequireToken.checked = Boolean(settings.tvRequireToken);
     form.elements.recordingDir.value = settings.recordingDir;
     form.elements.preRollMinutes.value = settings.preRollMinutes;
     form.elements.postRollMinutes.value = settings.postRollMinutes;
@@ -683,6 +737,181 @@
       radio.checked = radio.value === String(Boolean(settings.burnInMask));
     }
     applyMaskStyles();
+  }
+
+  function renderChannelSources() {
+    const list = $("[data-channel-source-list]");
+    if (!app.channelSources.length) {
+      list.innerHTML = '<p class="empty-inline">还没有配置直播源。</p>';
+      return;
+    }
+    list.innerHTML = app.channelSources
+      .map(
+        (source) => `
+          <div class="channel-source-row${source.enabled ? "" : " is-disabled"}">
+            <div class="channel-source-row__copy">
+              <strong>${escapeHtml(source.label)}</strong>
+              <span title="${escapeHtml(source.url)}">${escapeHtml(
+                source.url
+              )}</span>
+            </div>
+            <div class="channel-source-row__actions">
+              <button
+                class="subtle-button"
+                type="button"
+                data-channel-source-toggle="${escapeHtml(source.id)}"
+              >
+                ${source.enabled ? "停用" : "启用"}
+              </button>
+              ${
+                source.builtIn
+                  ? ""
+                  : `<button
+                      class="subtle-button subtle-button--danger"
+                      type="button"
+                      data-channel-source-delete="${escapeHtml(source.id)}"
+                    >
+                      删除
+                    </button>`
+              }
+            </div>
+          </div>
+        `
+      )
+      .join("");
+  }
+
+  async function loadChannelSources() {
+    try {
+      const payload = await api("/api/channel-sources");
+      app.channelSources = payload.sources || [];
+      renderChannelSources();
+    } catch (error) {
+      $("[data-channel-source-list]").innerHTML = `<p class="empty-inline">${escapeHtml(
+        error.message
+      )}</p>`;
+    }
+  }
+
+  async function addChannelSource() {
+    const label = $("[data-channel-source-label]").value.trim();
+    const url = $("[data-channel-source-url]").value.trim();
+    const fallbackUrl = $("[data-channel-source-fallback]").value.trim();
+    const priority = Number($("[data-channel-source-priority]").value) || 50;
+    if (!label || !url) {
+      toast("请填写直播源名称和 M3U 地址", "", "error");
+      return;
+    }
+    try {
+      await api("/api/channel-sources", {
+        method: "POST",
+        body: JSON.stringify({ label, url, fallbackUrl, priority })
+      });
+      $("[data-channel-source-label]").value = "";
+      $("[data-channel-source-url]").value = "";
+      $("[data-channel-source-fallback]").value = "";
+      $("[data-channel-source-priority]").value = "50";
+      await loadChannelSources();
+      toast("直播源已添加", label);
+    } catch (error) {
+      toast("无法添加直播源", error.message, "error");
+    }
+  }
+
+  async function toggleChannelSource(id) {
+    const source = app.channelSources.find((item) => item.id === id);
+    if (!source) {
+      return;
+    }
+    try {
+      await api("/api/channel-sources", {
+        method: "POST",
+        body: JSON.stringify({
+          ...source,
+          enabled: !source.enabled
+        })
+      });
+      await loadChannelSources();
+    } catch (error) {
+      toast("无法更新直播源", error.message, "error");
+    }
+  }
+
+  async function deleteChannelSource(id) {
+    const source = app.channelSources.find((item) => item.id === id);
+    if (!source || source.builtIn) {
+      return;
+    }
+    try {
+      await api(`/api/channel-sources/${encodeURIComponent(id)}`, {
+        method: "DELETE"
+      });
+      await loadChannelSources();
+      toast("直播源已删除", source.label);
+    } catch (error) {
+      toast("无法删除直播源", error.message, "error");
+    }
+  }
+
+  async function loadTvConfig() {
+    try {
+      app.tvConfig = await api("/api/tv/config");
+      $("[data-tv-playlist-url]").value = app.tvConfig.playlistUrl || "";
+      $("[data-tv-epg-url]").value = app.tvConfig.epgUrl || "";
+      $("[data-tv-token]").value = app.tvConfig.token || "";
+    } catch (error) {
+      $("[data-tv-playlist-url]").value = error.message;
+    }
+  }
+
+  async function copyText(value, label) {
+    if (!value) {
+      toast("没有可复制的内容", "", "error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(`${label}已复制`);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.append(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+      toast(`${label}已复制`);
+    }
+  }
+
+  async function regenerateTvToken() {
+    try {
+      await api("/api/tv/token/regenerate", { method: "POST" });
+      await loadTvConfig();
+      toast("电视令牌已更新", "旧令牌和旧订阅地址会立即失效。");
+    } catch (error) {
+      toast("无法更新电视令牌", error.message, "error");
+    }
+  }
+
+  async function testTvPlaylist() {
+    const url = app.tvConfig?.playlistUrl;
+    if (!url) {
+      toast("订阅地址还没有准备好", "", "error");
+      return;
+    }
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      const count = (text.match(/^#EXTINF/gm) || []).length;
+      if (!response.ok || !count) {
+        throw new Error(text.slice(0, 120) || "订阅内容为空");
+      }
+      toast("电视订阅可用", `共 ${count} 个频道。`);
+    } catch (error) {
+      toast("电视订阅测试失败", error.message, "error");
+    }
   }
 
   function renderAll() {
@@ -718,6 +947,11 @@
       view = "home";
     }
     app.view = view;
+    document.body.dataset.activeView = view;
+    if (view === "home") {
+      $('[data-view-panel="home"]')?.classList.remove("is-mobile-library");
+      document.body.classList.remove("is-home-library");
+    }
     for (const button of $$("[data-view]")) {
       button.classList.toggle("is-active", button.dataset.view === view);
     }
@@ -986,6 +1220,13 @@
     );
     message.hidden = true;
     layer.hidden = false;
+    if (window.history.state?.overlay !== "player") {
+      window.history.pushState(
+        { ...(window.history.state || {}), overlay: "player" },
+        "",
+        window.location.href
+      );
+    }
     document.body.style.overflow = "hidden";
     applyMaskStyles();
     updateRevealButton(recording);
@@ -1015,6 +1256,13 @@
     video.removeAttribute("src");
     video.load();
     $("[data-player-layer]").hidden = true;
+    if (window.history.state?.overlay === "player") {
+      window.history.replaceState(
+        { ...(window.history.state || {}), overlay: null },
+        "",
+        window.location.href
+      );
+    }
     document.body.style.overflow = "";
     app.activeRecording = null;
     window.clearInterval(app.progressTimer);
@@ -1261,6 +1509,7 @@
       burnInMask: form.elements.burnInMask.value === "true",
       recordingDir: form.elements.recordingDir.value,
       m3uUrl: form.elements.m3uUrl.value,
+      tvRequireToken: form.elements.tvRequireToken.checked,
       preRollMinutes: Number(form.elements.preRollMinutes.value),
       postRollMinutes: Number(form.elements.postRollMinutes.value),
       diskWarningGb: Number(form.elements.diskWarningGb.value)
@@ -1390,6 +1639,20 @@
         return;
       }
 
+      if (event.target.closest("[data-mobile-library-open]")) {
+        $('[data-view-panel="home"]')?.classList.add("is-mobile-library");
+        document.body.classList.add("is-home-library");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      if (event.target.closest("[data-mobile-library-back]")) {
+        $('[data-view-panel="home"]')?.classList.remove("is-mobile-library");
+        document.body.classList.remove("is-home-library");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       if (event.target.closest("[data-open-schedule]")) {
         openScheduleDialog();
         return;
@@ -1488,6 +1751,48 @@
 
       if (event.target.closest("[data-settings-m3u-test]")) {
         testSettingsM3u();
+        return;
+      }
+
+      if (event.target.closest("[data-channel-source-add]")) {
+        addChannelSource();
+        return;
+      }
+
+      const sourceToggle = event.target.closest("[data-channel-source-toggle]");
+      if (sourceToggle) {
+        toggleChannelSource(sourceToggle.dataset.channelSourceToggle);
+        return;
+      }
+
+      const sourceDelete = event.target.closest("[data-channel-source-delete]");
+      if (sourceDelete) {
+        deleteChannelSource(sourceDelete.dataset.channelSourceDelete);
+        return;
+      }
+
+      if (event.target.closest("[data-tv-copy-playlist]")) {
+        copyText($("[data-tv-playlist-url]").value, "M3U 订阅地址");
+        return;
+      }
+
+      if (event.target.closest("[data-tv-copy-epg]")) {
+        copyText($("[data-tv-epg-url]").value, "EPG 地址");
+        return;
+      }
+
+      if (event.target.closest("[data-tv-copy-token]")) {
+        copyText($("[data-tv-token]").value, "电视令牌");
+        return;
+      }
+
+      if (event.target.closest("[data-tv-regenerate]")) {
+        regenerateTvToken();
+        return;
+      }
+
+      if (event.target.closest("[data-tv-test]")) {
+        testTvPlaylist();
         return;
       }
 
@@ -1662,6 +1967,18 @@
       navigate(window.location.hash.slice(1) || "home");
     });
 
+    window.addEventListener("popstate", () => {
+      const player = $("[data-player-layer]");
+      if (!player.hidden) {
+        closePlayer();
+        return;
+      }
+      const openDialog = document.querySelector("dialog[open]");
+      if (openDialog) {
+        openDialog.close();
+      }
+    });
+
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("[data-player-layer]").hidden) {
         closePlayer();
@@ -1692,8 +2009,8 @@
 
   async function boot() {
     bindEvents();
-    await loadState();
     navigate(window.location.hash.slice(1) || "home");
+    await Promise.all([loadState(), loadChannelSources(), loadTvConfig()]);
     refreshIcons();
   }
 

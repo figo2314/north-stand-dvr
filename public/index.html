@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#172039" />
     <meta name="description" content="本地优先、默认隐藏比分与赛果的足球录像台。" />
     <title>北看台</title>
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -37,9 +39,13 @@
             <i data-lucide="radar"></i>
             <span>比赛雷达</span>
           </a>
+          <a class="nav-item" href="/football.html">
+            <i data-lucide="circle-play"></i>
+            <span>足球直播</span>
+          </a>
           <a class="nav-item" href="/channels.html">
             <i data-lucide="tv-minimal-play"></i>
-            <span>直播频道</span>
+            <span>电视直播</span>
           </a>
           <button class="nav-item" type="button" data-view="logs">
             <i data-lucide="scroll-text"></i>
@@ -101,6 +107,95 @@
               </div>
             </header>
 
+            <section class="home-mobile-launcher" aria-label="功能入口">
+              <div class="home-mobile-status">
+                <span
+                  class="home-mobile-status__beacon"
+                  data-mobile-status-beacon
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <span>今晚录制</span>
+                  <strong data-mobile-status-title>正在检查</strong>
+                  <small data-mobile-status-copy>读取录像机和下一场计划</small>
+                </div>
+              </div>
+
+              <a class="home-live-entry" href="/channels.html">
+                <span class="home-live-entry__badge">
+                  <span></span>
+                  LIVE
+                </span>
+                <span class="home-live-entry__icon">
+                  <i data-lucide="tv-minimal-play"></i>
+                </span>
+                <span class="home-live-entry__copy">
+                  <strong>电视直播</strong>
+                  <small>默认 TVB翡翠台 1080P</small>
+                </span>
+                <i data-lucide="arrow-up-right"></i>
+              </a>
+
+              <a
+                class="home-live-entry home-live-entry--football"
+                href="/football.html"
+              >
+                <span class="home-live-entry__badge">
+                  <span></span>
+                  FOOTBALL
+                </span>
+                <span class="home-live-entry__icon">
+                  <i data-lucide="circle-play"></i>
+                </span>
+                <span class="home-live-entry__copy">
+                  <strong>足球直播</strong>
+                  <small>赛事 · 全场回放 · 备用线路</small>
+                </span>
+                <i data-lucide="arrow-up-right"></i>
+              </a>
+
+              <button
+                class="home-primary-entry"
+                type="button"
+                data-mobile-library-open
+              >
+                <span class="home-primary-entry__icon">
+                  <i data-lucide="library-big"></i>
+                </span>
+                <span class="home-primary-entry__copy">
+                  <strong>待看录像</strong>
+                  <small><b data-mobile-recording-count>0</b> 场已就绪</small>
+                </span>
+                <i data-lucide="chevron-right"></i>
+              </button>
+
+              <div class="home-entry-grid">
+                <button type="button" data-view="schedule">
+                  <span><i data-lucide="calendar-clock"></i></span>
+                  <strong>录制日程</strong>
+                </button>
+                <a href="/mockup.html">
+                  <span><i data-lucide="radar"></i></span>
+                  <strong>比赛雷达</strong>
+                </a>
+              </div>
+
+              <div class="home-launcher-quick">
+                <button type="button" data-open-import>
+                  <i data-lucide="folder-search"></i>
+                  <span>导入</span>
+                </button>
+                <button type="button" data-view="logs">
+                  <i data-lucide="scroll-text"></i>
+                  <span>日志</span>
+                </button>
+                <button type="button" data-view="settings">
+                  <i data-lucide="sliders-horizontal"></i>
+                  <span>设置</span>
+                </button>
+              </div>
+            </section>
+
             <section class="overnight-strip" aria-labelledby="overnight-title">
               <div class="strip-icon" aria-hidden="true">
                 <i data-lucide="moon-star"></i>
@@ -117,6 +212,14 @@
 
             <div class="workspace-grid">
               <section class="library-section" aria-labelledby="ready-title">
+                <button
+                  class="mobile-library-back"
+                  type="button"
+                  data-mobile-library-back
+                >
+                  <i data-lucide="arrow-left"></i>
+                  返回首页
+                </button>
                 <div class="section-heading">
                   <div>
                     <h2 id="ready-title">等待开球</h2>
@@ -272,6 +375,15 @@
               </div>
               <div class="header-actions">
                 <button
+                  class="button button--secondary"
+                  type="button"
+                  data-pwa-install
+                  hidden
+                >
+                  <i data-lucide="download"></i>
+                  安装到手机
+                </button>
+                <button
                   class="button button--secondary mobile-only-action"
                   type="button"
                   data-view="logs"
@@ -373,6 +485,137 @@
                     </label>
                   </div>
                 </section>
+
+                <section class="settings-group settings-group--stacked">
+                  <div class="settings-copy">
+                    <h2>直播源管理</h2>
+                    <p>多个 M3U 会按优先级合并，重复频道自动去重。</p>
+                  </div>
+                  <div class="channel-source-list" data-channel-source-list>
+                    <p class="empty-inline">正在读取直播源…</p>
+                  </div>
+                  <div class="channel-source-editor">
+                    <label class="field">
+                      <span>显示名称</span>
+                      <input
+                        data-channel-source-label
+                        placeholder="例如：备用直播源"
+                        maxlength="60"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label class="field field--wide">
+                      <span>M3U 地址</span>
+                      <input
+                        data-channel-source-url
+                        type="url"
+                        placeholder="https://example.com/playlist.m3u"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label class="field field--wide">
+                      <span>备用地址</span>
+                      <input
+                        data-channel-source-fallback
+                        type="url"
+                        placeholder="可选"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label class="field">
+                      <span>优先级</span>
+                      <div class="number-input">
+                        <input
+                          data-channel-source-priority
+                          type="number"
+                          min="0"
+                          max="1000"
+                          value="50"
+                        />
+                        <em>分</em>
+                      </div>
+                    </label>
+                    <button
+                      class="button button--secondary align-start"
+                      type="button"
+                      data-channel-source-add
+                    >
+                      <i data-lucide="plus"></i>
+                      添加直播源
+                    </button>
+                  </div>
+                </section>
+
+                <section class="settings-group settings-group--stacked">
+                  <div class="settings-copy">
+                    <h2>Apple TV 与电视播放器</h2>
+                    <p>只读令牌可访问频道列表、节目单和电视流，不能修改录像或设置。</p>
+                  </div>
+                  <div class="tv-access-panel">
+                    <label class="switch-control">
+                      <input type="checkbox" name="tvRequireToken" />
+                      <span aria-hidden="true"></span>
+                      <strong>要求电视令牌</strong>
+                    </label>
+                    <label class="field field--wide">
+                      <span>M3U 订阅地址</span>
+                      <div class="field-action">
+                        <input data-tv-playlist-url readonly />
+                        <button
+                          class="button button--secondary button--compact"
+                          type="button"
+                          data-tv-copy-playlist
+                        >
+                          复制
+                        </button>
+                      </div>
+                    </label>
+                    <label class="field field--wide">
+                      <span>EPG 节目单地址</span>
+                      <div class="field-action">
+                        <input data-tv-epg-url readonly />
+                        <button
+                          class="button button--secondary button--compact"
+                          type="button"
+                          data-tv-copy-epg
+                        >
+                          复制
+                        </button>
+                      </div>
+                    </label>
+                    <label class="field field--wide">
+                      <span>只读电视令牌</span>
+                      <div class="field-action">
+                        <input data-tv-token readonly />
+                        <button
+                          class="button button--secondary button--compact"
+                          type="button"
+                          data-tv-copy-token
+                        >
+                          复制
+                        </button>
+                      </div>
+                    </label>
+                    <div class="tv-access-actions">
+                      <button
+                        class="button button--secondary"
+                        type="button"
+                        data-tv-test
+                      >
+                        <i data-lucide="flask-conical"></i>
+                        测试订阅
+                      </button>
+                      <button
+                        class="button button--secondary"
+                        type="button"
+                        data-tv-regenerate
+                      >
+                        <i data-lucide="refresh-cw"></i>
+                        重新生成令牌
+                      </button>
+                    </div>
+                  </div>
+                </section>
               </form>
 
               <aside class="settings-preview">
@@ -402,8 +645,8 @@
         data-view="home"
         data-mobile-tab="home"
       >
-        <i data-lucide="library-big"></i>
-        <span>录像</span>
+        <i data-lucide="house"></i>
+        <span>首页</span>
       </button>
       <button
         class="mobile-tab"
@@ -420,7 +663,7 @@
       </a>
       <a class="mobile-tab" href="/channels.html" data-mobile-tab="channels">
         <i data-lucide="tv-minimal-play"></i>
-        <span>频道</span>
+        <span>直播</span>
       </a>
       <button
         class="mobile-tab"
@@ -776,5 +1019,6 @@
     <div class="toast-region" data-toast-region aria-live="polite"></div>
     <script src="/vendor/lucide.js"></script>
     <script src="/app.js"></script>
+    <script src="/pwa.js"></script>
   </body>
 </html>

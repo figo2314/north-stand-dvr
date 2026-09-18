@@ -1,11 +1,25 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  extractEpgUrls,
   parseAttributes,
   parseM3u,
   sanitizeFfmpegOutput,
   validateHttpUrl
 } = require("../server/m3u");
+
+test("extractEpgUrls reads XMLTV links from the M3U header", () => {
+  assert.deepEqual(
+    extractEpgUrls(
+      '#EXTM3U x-tvg-url="guide.xml,https://example.com/backup.xml"',
+      "https://example.com/list.m3u"
+    ),
+    [
+      "https://example.com/guide.xml",
+      "https://example.com/backup.xml"
+    ]
+  );
+});
 
 test("parseM3u reads channels and resolves relative stream URLs", () => {
   const channels = parseM3u(

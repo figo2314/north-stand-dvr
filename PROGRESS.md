@@ -43,6 +43,19 @@ Updated: 2026-09-16
   live playback controls.
 - Channel rows progressively show detected resolution labels with a six-hour
   local cache; unavailable channels are marked without repeatedly probing them.
+- Live sources are now managed on the server with priority, fallback URLs,
+  enabled state, merged channel lists, and persistent health records.
+- XMLTV EPG links are detected from M3U headers and show current and next
+  programmes in the channel list.
+- The channel page supports smart sorting, playable-only filters, recent
+  channels, per-channel details, mobile landscape playback, gestures,
+  picture-in-picture, remote playback, wake lock, and media-session controls.
+- A web manifest and service worker make the interface installable and cache
+  the application shell for mobile use.
+- Read-only TV endpoints now publish M3U, XMLTV EPG, and proxied HLS streams
+  for Apple TV and other IPTV players without exposing upstream source URLs.
+- A dedicated football live page filters sports groups and football matches
+  from the same playlists while reusing the full live player and health tools.
 - `/api/state` responded successfully.
 - The configured M3U source returned 137 channels and 13 sports channels.
 

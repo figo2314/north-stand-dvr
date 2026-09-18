@@ -1,0 +1,41 @@
+{
+  "name": "北看台",
+  "short_name": "北看台",
+  "description": "本地优先、默认隐藏比分与赛果的足球录像与直播台。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf8f8",
+  "theme_color": "#172039",
+  "orientation": "any",
+  "shortcuts": [
+    {
+      "name": "足球直播",
+      "short_name": "足球",
+      "url": "/football.html"
+    },
+    {
+      "name": "电视直播",
+      "short_name": "电视直播",
+      "url": "/channels.html"
+    },
+    {
+      "name": "待看录像",
+      "short_name": "录像库",
+      "url": "/#home"
+    },
+    {
+      "name": "录制日程",
+      "short_name": "日程",
+      "url": "/#schedule"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

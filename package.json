@@ -6,6 +6,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
+    "start:lan": "node server/index.js --lan",
     "dev": "node --watch server/index.js",
     "test": "node --test",
     "test:ui": "playwright test"

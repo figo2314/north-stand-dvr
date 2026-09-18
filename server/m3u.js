@@ -81,6 +81,28 @@ function parseM3u(text, baseUrl) {
   return channels;
 }
 
+function extractEpgUrls(text, baseUrl) {
+  const header =
+    String(text)
+      .split(/\r?\n/)
+      .find((line) => line.trimStart().startsWith("#EXTM3U")) || "";
+  const urls = [];
+  for (const attribute of ["x-tvg-url", "url-tvg"]) {
+    const pattern = new RegExp(`${attribute}="([^"]+)"`, "gi");
+    let match;
+    while ((match = pattern.exec(header))) {
+      for (const value of match[1].split(",")) {
+        try {
+          urls.push(new URL(value.trim(), baseUrl).toString());
+        } catch {
+          // Ignore malformed EPG links.
+        }
+      }
+    }
+  }
+  return [...new Set(urls)];
+}
+
 async function fetchM3u(urlValue) {
   const url = validateHttpUrl(urlValue);
   const controller = new AbortController();
@@ -109,7 +131,8 @@ async function fetchM3u(urlValue) {
     }
     return {
       url: response.url || url.toString(),
-      channels: parseM3u(text, response.url || url.toString())
+      channels: parseM3u(text, response.url || url.toString()),
+      epgUrls: extractEpgUrls(text, response.url || url.toString())
     };
   } finally {
     clearTimeout(timeout);
@@ -210,6 +233,7 @@ function probeStream({
 }
 
 module.exports = {
+  extractEpgUrls,
   fetchM3u,
   parseAttributes,
   parseM3u,

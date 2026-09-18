@@ -7,9 +7,22 @@ const path = require("node:path");
 const express = require("express");
 const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 const { createBasicAuth, parseBasicUsers } = require("./auth");
+const {
+  enrichChannels,
+  loadChannelCatalog,
+  normalizeSource,
+  probeChannelHealth
+} = require("./channels");
+const { loadEpg } = require("./epg");
 const { createLiveProxy } = require("./live");
 const { EventLog } = require("./logger");
 const { JsonStore } = require("./store");
+const {
+  buildM3u,
+  buildXmltv,
+  tvChannels,
+  tvTokenMatches
+} = require("./tv");
 const {
   getActiveJobs,
   getRecordingWindow,
@@ -19,10 +32,11 @@ const {
   stopRecording,
   stopAll
 } = require("./dvr");
-const { fetchM3u, probeStream } = require("./m3u");
+const { fetchM3u, probeStream, validateHttpUrl } = require("./m3u");
 
 const PORT = Number(process.env.PORT || 4173);
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST =
+  process.env.HOST || (process.argv.includes("--lan") ? "0.0.0.0" : "127.0.0.1");
 const ROOT = path.resolve(__dirname, "..");
 const DB_PATH = path.join(ROOT, "data", "db.json");
 const store = new JsonStore(DB_PATH);
@@ -30,8 +44,65 @@ const eventLog = new EventLog(path.join(ROOT, "data", "logs.jsonl"));
 const liveProxy = createLiveProxy();
 
 const processingJobs = new Map();
+const CHANNEL_CATALOG_TTL_MS = 5 * 60 * 1000;
+let channelCatalogCache = null;
 let schedulerTimer = null;
 let lastSchedulerError = null;
+
+async function getChannelCatalog({ force = false } = {}) {
+  if (
+    !force &&
+    channelCatalogCache &&
+    Date.now() - channelCatalogCache.loadedAt < CHANNEL_CATALOG_TTL_MS
+  ) {
+    return channelCatalogCache;
+  }
+  const catalog = await loadChannelCatalog(store.channelSources);
+  channelCatalogCache = {
+    ...catalog,
+    loadedAt: Date.now()
+  };
+  return channelCatalogCache;
+}
+
+function invalidateChannelCatalog() {
+  channelCatalogCache = null;
+}
+
+function lanIpv4() {
+  for (const addresses of Object.values(os.networkInterfaces())) {
+    for (const address of addresses || []) {
+      if (
+        address.family === "IPv4" &&
+        !address.internal &&
+        address.address.startsWith("192.168.")
+      ) {
+        return address.address;
+      }
+    }
+  }
+  return null;
+}
+
+function tvBaseUrl(request) {
+  const host = request.get("host") || `127.0.0.1:${PORT}`;
+  if (/^(127\.0\.0\.1|localhost|0\.0\.0\.0)(:\d+)?$/i.test(host)) {
+    const address = lanIpv4();
+    if (address) {
+      return `${request.protocol}://${address}:${PORT}`;
+    }
+  }
+  return `${request.protocol}://${host}`;
+}
+
+function requireTvAuthorization(request) {
+  if (
+    store.settings.tvRequireToken === true &&
+    !tvTokenMatches(request.query.token, store.settings.tvToken)
+  ) {
+    throw forbidden("电视访问令牌无效");
+  }
+}
 
 function fixtureLogContext(fixture) {
   return {
@@ -59,11 +130,26 @@ function notFound(message) {
   return error;
 }
 
+function forbidden(message) {
+  const error = new Error(message);
+  error.status = 403;
+  return error;
+}
+
 function requireString(value, label, maxLength = 200) {
   if (typeof value !== "string" || !value.trim()) {
     throw badRequest(`${label}不能为空`);
   }
   return value.trim().slice(0, maxLength);
+}
+
+function requireLiveSourceUrl(value, label, maxLength = 1000) {
+  const text = requireString(value, label, maxLength);
+  try {
+    return validateHttpUrl(text).toString();
+  } catch {
+    throw badRequest(`${label}只支持 HTTP 或 HTTPS`);
+  }
 }
 
 function parseDate(value, label) {
@@ -368,12 +454,23 @@ async function addImportedRecording({
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", true);
 const basicAuth = createBasicAuth({
   users: parseBasicUsers(process.env.APP_BASIC_USERS),
   realm: process.env.APP_BASIC_REALM || "North Stand DVR"
 });
 app.use((request, response, next) => {
-  if (request.path === "/api/health") {
+  const publicTvPath =
+    request.path === "/api/tv/playlist.m3u" ||
+    request.path === "/api/tv/epg.xml" ||
+    request.path.startsWith("/api/tv/stream/");
+  if (
+    request.path === "/api/health" ||
+    (publicTvPath &&
+      (store.settings?.tvRequireToken !== true ||
+        tvTokenMatches(request.query.token, store.settings?.tvToken))) ||
+    (request.path === "/api/live/proxy" && request.query.session)
+  ) {
     next();
     return;
   }
@@ -402,6 +499,83 @@ app.get(
   "/api/health",
   asyncRoute(async (request, response) => {
     response.json(await healthSnapshot());
+  })
+);
+
+app.get(
+  "/api/tv/config",
+  asyncRoute(async (request, response) => {
+    const baseUrl = tvBaseUrl(request);
+    const token = store.settings.tvRequireToken
+      ? store.settings.tvToken
+      : "";
+    const tokenQuery = token
+      ? `?token=${encodeURIComponent(token)}`
+      : "";
+    response.json({
+      token,
+      requireToken: store.settings.tvRequireToken,
+      playlistUrl: `${baseUrl}/api/tv/playlist.m3u${tokenQuery}`,
+      epgUrl: `${baseUrl}/api/tv/epg.xml${tokenQuery}`
+    });
+  })
+);
+
+app.post(
+  "/api/tv/token/regenerate",
+  asyncRoute(async (request, response) => {
+    const tvToken = crypto.randomBytes(24).toString("hex");
+    await store.updateSettings({ tvToken });
+    response.json({ tvToken });
+  })
+);
+
+app.get(
+  "/api/tv/playlist.m3u",
+  asyncRoute(async (request, response) => {
+    requireTvAuthorization(request);
+    const catalog = await getChannelCatalog();
+    const channels = tvChannels(catalog.channels);
+    response.setHeader("Content-Type", "audio/x-mpegurl; charset=utf-8");
+    response.setHeader("Cache-Control", "no-store, max-age=0");
+    response.send(
+      buildM3u(
+        channels,
+        tvBaseUrl(request),
+        store.settings.tvRequireToken ? store.settings.tvToken : ""
+      )
+    );
+  })
+);
+
+app.get(
+  "/api/tv/epg.xml",
+  asyncRoute(async (request, response) => {
+    requireTvAuthorization(request);
+    const catalog = await getChannelCatalog();
+    const channels = tvChannels(catalog.channels);
+    const epg = await loadEpg(catalog.epgUrls || []);
+    response.setHeader("Content-Type", "application/xml; charset=utf-8");
+    response.setHeader("Cache-Control", "no-store, max-age=0");
+    response.send(
+      buildXmltv(channels, epg.channels || {}, tvBaseUrl(request))
+    );
+  })
+);
+
+app.get(
+  "/api/tv/stream/:id",
+  asyncRoute(async (request, response) => {
+    requireTvAuthorization(request);
+    const catalog = await getChannelCatalog();
+    const channel = catalog.channels.find(
+      (item) => item.id === request.params.id
+    );
+    if (!channel) {
+      throw notFound("没有找到这个电视频道");
+    }
+    request.liveSourceUrl = channel.streamUrl;
+    await liveProxy(request, response);
   })
 );
 
@@ -486,6 +660,9 @@ app.post(
     }
     if ("m3uUrl" in body) {
       patch.m3uUrl = String(body.m3uUrl || "").trim().slice(0, 1000);
+    }
+    if ("tvRequireToken" in body) {
+      patch.tvRequireToken = Boolean(body.tvRequireToken);
     }
     if ("preRollMinutes" in body) {
       patch.preRollMinutes = Math.max(0, Math.min(60, Number(body.preRollMinutes) || 0));
@@ -767,6 +944,118 @@ app.get(
     response.setHeader("Cache-Control", "no-store, max-age=0");
     response.setHeader("Content-Type", "image/jpeg");
     response.sendFile(previewPath);
+  })
+);
+
+app.post(
+  "/api/channels/probe",
+  asyncRoute(async (request, response) => {
+    const streamUrl = requireLiveSourceUrl(
+      request.body?.url,
+      "频道地址",
+      2000
+    );
+    const key = requireString(
+      request.body?.healthKey || "",
+      "健康记录标识",
+      80
+    );
+    const current = store.channelHealth[key] || null;
+    const { result, health, score } = await probeChannelHealth({
+      streamUrl,
+      current
+    });
+    await store.updateChannelHealth(key, health);
+    response.status(result.ok ? 200 : 422).json({
+      ...result,
+      health,
+      score,
+      key
+    });
+  })
+);
+
+app.get(
+  "/api/channels",
+  asyncRoute(async (request, response) => {
+    const force = request.query.refresh === "1";
+    const catalog = await getChannelCatalog({ force });
+    response.json({
+      count: catalog.channels.length,
+      channels: enrichChannels(catalog.channels, store.channelHealth),
+      sources: catalog.sources,
+      epgUrls: catalog.epgUrls || [],
+      cachedAt: new Date(catalog.loadedAt).toISOString()
+    });
+  })
+);
+
+app.post(
+  "/api/epg",
+  asyncRoute(async (request, response) => {
+    const urls = Array.isArray(request.body?.urls)
+      ? request.body.urls
+          .slice(0, 5)
+          .map((url) => requireLiveSourceUrl(url, "节目单地址", 1000))
+      : [];
+    response.json(await loadEpg(urls));
+  })
+);
+
+app.get(
+  "/api/channel-sources",
+  asyncRoute(async (request, response) => {
+    response.json({
+      sources: store.channelSources.map((source) => normalizeSource(source))
+    });
+  })
+);
+
+app.post(
+  "/api/channel-sources",
+  asyncRoute(async (request, response) => {
+    const body = request.body || {};
+    const id = String(body.id || "").trim().slice(0, 80);
+    const existing = id
+      ? store.channelSources.find((source) => source.id === id)
+      : null;
+    const source = normalizeSource({
+      id: existing?.id || id || `source-${crypto.randomUUID().slice(0, 8)}`,
+      label: requireString(body.label, "直播源名称", 60),
+      url: requireLiveSourceUrl(body.url, "直播源地址"),
+      fallbackUrl: body.fallbackUrl
+        ? requireLiveSourceUrl(body.fallbackUrl, "备用直播源地址")
+        : "",
+      enabled: body.enabled !== false,
+      builtIn: existing?.builtIn,
+      priority: body.priority
+    });
+    const sources = existing
+      ? store.channelSources.map((item) => (item.id === id ? source : item))
+      : [...store.channelSources, source];
+    await store.replaceChannelSources(sources);
+    invalidateChannelCatalog();
+    response.status(existing ? 200 : 201).json({ source });
+  })
+);
+
+app.delete(
+  "/api/channel-sources/:id",
+  asyncRoute(async (request, response) => {
+    const source = store.channelSources.find(
+      (item) => item.id === request.params.id
+    );
+    if (!source) {
+      throw notFound("没有找到这个直播源");
+    }
+    if (source.builtIn) {
+      throw badRequest("内置直播源不能删除，可以将其停用");
+    }
+    await store.replaceChannelSources(
+      store.channelSources.filter((item) => item.id !== source.id)
+    );
+    invalidateChannelCatalog();
+    response.status(204).end();
   })
 );
 

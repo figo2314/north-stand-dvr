@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#172039" />
     <title>比赛雷达 · 北看台</title>
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/mockup.css" />
   </head>
@@ -27,7 +29,8 @@
           <a href="/#home">待看录像</a>
           <a href="/#schedule">录制日程</a>
           <a class="is-active" href="/mockup.html">比赛雷达</a>
-          <a href="/channels.html">直播频道</a>
+          <a href="/football.html">足球直播</a>
+          <a href="/channels.html">电视直播</a>
         </nav>
         <span class="mock-source-state" data-source-state>
           <i data-lucide="loader-circle"></i>
@@ -175,7 +178,7 @@
       </a>
       <a class="mobile-tab" href="/channels.html">
         <i data-lucide="tv-minimal-play"></i>
-        <span>频道</span>
+        <span>直播</span>
       </a>
       <a class="mobile-tab" href="/#settings">
         <i data-lucide="sliders-horizontal"></i>
@@ -236,5 +239,6 @@
     <script src="/vendor/lucide.js"></script>
     <script src="/vendor/hls.js"></script>
     <script src="/mockup.js"></script>
+    <script src="/pwa.js"></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
@@ -8,6 +9,9 @@ const DEFAULT_DB = {
     burnInMask: false,
     recordingDir: "./recordings",
     m3uUrl: "",
+    channelSourcesMigrated: false,
+    tvToken: "",
+    tvRequireToken: false,
     preRollMinutes: 5,
     postRollMinutes: 15,
     mask: {
@@ -19,6 +23,19 @@ const DEFAULT_DB = {
     },
     diskWarningGb: 20
   },
+  channelSources: [
+    {
+      id: "myiptv-ipv4",
+      label: "myIPTV",
+      url: "https://gh-proxy.org/raw.githubusercontent.com/suxuang/myIPTV/main/ipv4.m3u",
+      fallbackUrl:
+        "https://raw.githubusercontent.com/suxuang/myIPTV/main/ipv4.m3u",
+      enabled: true,
+      builtIn: true,
+      priority: 100
+    }
+  ],
+  channelHealth: {},
   fixtures: [],
   recordings: []
 };
@@ -78,6 +95,35 @@ class JsonStore {
     };
     this.data.fixtures ||= [];
     this.data.recordings ||= [];
+    this.data.channelSources ||= clone(DEFAULT_DB.channelSources);
+    this.data.channelHealth ||= {};
+    let shouldPersist = false;
+    if (!this.data.settings.channelSourcesMigrated) {
+      const legacyUrl = String(this.data.settings.m3uUrl || "").trim();
+      if (
+        legacyUrl &&
+        !this.data.channelSources.some((source) => source.url === legacyUrl)
+      ) {
+        this.data.channelSources.push({
+          id: "legacy-settings-source",
+          label: "设置源",
+          url: legacyUrl,
+          fallbackUrl: "",
+          enabled: true,
+          builtIn: false,
+          priority: 50
+        });
+      }
+      this.data.settings.channelSourcesMigrated = true;
+      shouldPersist = true;
+    }
+    if (!this.data.settings.tvToken) {
+      this.data.settings.tvToken = crypto.randomBytes(24).toString("hex");
+      shouldPersist = true;
+    }
+    if (shouldPersist) {
+      await this.persist();
+    }
     return this;
   }
 
@@ -109,6 +155,14 @@ class JsonStore {
     return this.data.recordings;
   }
 
+  get channelSources() {
+    return this.data.channelSources;
+  }
+
+  get channelHealth() {
+    return this.data.channelHealth;
+  }
+
   findFixture(id) {
     return this.data.fixtures.find((fixture) => fixture.id === id);
   }
@@ -128,6 +182,21 @@ class JsonStore {
     };
     await this.persist();
     return clone(this.data.settings);
+  }
+
+  async replaceChannelSources(sources) {
+    this.data.channelSources = clone(sources);
+    await this.persist();
+    return clone(this.data.channelSources);
+  }
+
+  async updateChannelHealth(key, patch) {
+    this.data.channelHealth[key] = {
+      ...(this.data.channelHealth[key] || {}),
+      ...patch
+    };
+    await this.persist();
+    return clone(this.data.channelHealth[key]);
   }
 
   async addFixture(fixture) {
