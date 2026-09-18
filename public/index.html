@@ -37,6 +37,14 @@
             <i data-lucide="radar"></i>
             <span>比赛雷达</span>
           </a>
+          <a class="nav-item" href="/channels.html">
+            <i data-lucide="tv-minimal-play"></i>
+            <span>直播频道</span>
+          </a>
+          <button class="nav-item" type="button" data-view="logs">
+            <i data-lucide="scroll-text"></i>
+            <span>运行日志</span>
+          </button>
           <button class="nav-item" type="button" data-view="settings">
             <i data-lucide="sliders-horizontal"></i>
             <span>遮罩与设置</span>
@@ -212,6 +220,47 @@
             </section>
           </section>
 
+          <section class="view" data-view-panel="logs" hidden>
+            <header class="page-header">
+              <div>
+                <p class="day-line">故障与录制轨迹</p>
+                <h1>昨晚到底发生了什么。</h1>
+                <p class="header-note">
+                  调度、开录、源读取、FFmpeg 退出和录像保存都会记录在本机。
+                </p>
+              </div>
+              <div class="header-actions">
+                <button class="button button--secondary" type="button" data-refresh-logs>
+                  <i data-lucide="refresh-cw"></i>
+                  刷新日志
+                </button>
+                <button class="button button--secondary" type="button" data-clear-logs>
+                  <i data-lucide="trash-2"></i>
+                  清空日志
+                </button>
+              </div>
+            </header>
+
+            <section class="schedule-surface runtime-log-surface" aria-labelledby="runtime-log-title">
+              <div class="section-heading">
+                <div>
+                  <h2 id="runtime-log-title">运行日志</h2>
+                  <p data-log-summary>正在读取最近的运行记录…</p>
+                </div>
+                <label class="log-filter">
+                  <span>级别</span>
+                  <select data-log-level>
+                    <option value="">全部</option>
+                    <option value="info">信息</option>
+                    <option value="warning">警告</option>
+                    <option value="error">错误</option>
+                  </select>
+                </label>
+              </div>
+              <div class="runtime-log-list" data-log-list></div>
+            </section>
+          </section>
+
           <section class="view" data-view-panel="settings" hidden>
             <header class="page-header">
               <div>
@@ -221,10 +270,20 @@
                   调整遮罩、录像目录和录制窗口。所有设置保存在本机。
                 </p>
               </div>
-              <button class="button button--primary" type="button" data-save-settings>
-                <i data-lucide="save"></i>
-                保存设置
-              </button>
+              <div class="header-actions">
+                <button
+                  class="button button--secondary mobile-only-action"
+                  type="button"
+                  data-view="logs"
+                >
+                  <i data-lucide="scroll-text"></i>
+                  运行日志
+                </button>
+                <button class="button button--primary" type="button" data-save-settings>
+                  <i data-lucide="save"></i>
+                  保存设置
+                </button>
+              </div>
             </header>
 
             <div class="settings-layout">
@@ -335,6 +394,44 @@
         </main>
       </div>
     </div>
+
+    <nav class="mobile-tabbar" aria-label="手机主导航">
+      <button
+        class="mobile-tab is-active"
+        type="button"
+        data-view="home"
+        data-mobile-tab="home"
+      >
+        <i data-lucide="library-big"></i>
+        <span>录像</span>
+      </button>
+      <button
+        class="mobile-tab"
+        type="button"
+        data-view="schedule"
+        data-mobile-tab="schedule"
+      >
+        <i data-lucide="calendar-clock"></i>
+        <span>日程</span>
+      </button>
+      <a class="mobile-tab" href="/mockup.html" data-mobile-tab="radar">
+        <i data-lucide="radar"></i>
+        <span>雷达</span>
+      </a>
+      <a class="mobile-tab" href="/channels.html" data-mobile-tab="channels">
+        <i data-lucide="tv-minimal-play"></i>
+        <span>频道</span>
+      </a>
+      <button
+        class="mobile-tab"
+        type="button"
+        data-view="settings"
+        data-mobile-tab="settings"
+      >
+        <i data-lucide="sliders-horizontal"></i>
+        <span>设置</span>
+      </button>
+    </nav>
 
     <dialog class="dialog" data-schedule-dialog>
       <form method="dialog" data-schedule-form>

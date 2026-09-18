@@ -127,7 +127,12 @@ function sanitizeFfmpegOutput(value) {
     .join(" ");
 }
 
-function probeStream({ url, inputFormat = "auto", durationSeconds = 4 }) {
+function probeStream({
+  url,
+  inputFormat = "auto",
+  durationSeconds = 4,
+  frames = 0
+}) {
   return new Promise((resolve) => {
     let stderr = "";
     let settled = false;
@@ -141,15 +146,16 @@ function probeStream({ url, inputFormat = "auto", durationSeconds = 4 }) {
     if (inputFormat === "hls") {
       args.push("-f", "hls");
     }
-    args.push(
-      "-i",
-      url,
-      "-t",
-      String(Math.max(2, Math.min(10, durationSeconds))),
-      "-f",
-      "null",
-      "-"
-    );
+    args.push("-i", url);
+    if (frames > 0) {
+      args.push("-frames:v", String(Math.max(1, Math.min(10, frames))));
+    } else {
+      args.push(
+        "-t",
+        String(Math.max(2, Math.min(10, durationSeconds)))
+      );
+    }
+    args.push("-f", "null", "-");
 
     const child = spawn(ffmpegPath, args, {
       windowsHide: true,

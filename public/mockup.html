@@ -27,6 +27,7 @@
           <a href="/#home">待看录像</a>
           <a href="/#schedule">录制日程</a>
           <a class="is-active" href="/mockup.html">比赛雷达</a>
+          <a href="/channels.html">直播频道</a>
         </nav>
         <span class="mock-source-state" data-source-state>
           <i data-lucide="loader-circle"></i>
@@ -159,8 +160,81 @@
       </main>
     </div>
 
+    <nav class="mobile-tabbar" aria-label="手机主导航">
+      <a class="mobile-tab" href="/#home">
+        <i data-lucide="library-big"></i>
+        <span>录像</span>
+      </a>
+      <a class="mobile-tab" href="/#schedule">
+        <i data-lucide="calendar-clock"></i>
+        <span>日程</span>
+      </a>
+      <a class="mobile-tab is-active" href="/mockup.html" aria-current="page">
+        <i data-lucide="radar"></i>
+        <span>雷达</span>
+      </a>
+      <a class="mobile-tab" href="/channels.html">
+        <i data-lucide="tv-minimal-play"></i>
+        <span>频道</span>
+      </a>
+      <a class="mobile-tab" href="/#settings">
+        <i data-lucide="sliders-horizontal"></i>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <dialog class="live-dialog" data-live-dialog>
+      <div class="live-player-shell">
+        <header class="live-player-header">
+          <div>
+            <p class="day-line">直播直看 · 高清优先</p>
+            <h2 data-live-title>直播</h2>
+          </div>
+          <button class="icon-button" type="button" data-live-close aria-label="关闭直播">
+            <i data-lucide="x"></i>
+          </button>
+        </header>
+
+        <div class="live-video-stage" data-live-stage>
+          <video data-live-video playsinline preload="metadata"></video>
+          <span class="live-score-shield" data-live-shield aria-hidden="true"></span>
+          <div class="live-message" data-live-message hidden>
+            <i data-lucide="loader-circle"></i>
+            <strong>正在连接直播源</strong>
+            <p>首次连接可能需要几秒钟。</p>
+          </div>
+        </div>
+
+        <div class="live-player-controls">
+          <button class="live-control" type="button" data-live-toggle aria-label="播放或暂停">
+            <i data-lucide="pause"></i>
+          </button>
+          <button class="live-control" type="button" data-live-mute aria-label="静音">
+            <i data-lucide="volume-2"></i>
+          </button>
+          <button class="live-control" type="button" data-live-mask aria-label="比分遮罩">
+            <i data-lucide="scan-line"></i>
+          </button>
+          <label class="live-quality">
+            <span>画质</span>
+            <select data-live-quality>
+              <option value="-1">自动</option>
+            </select>
+          </label>
+          <div class="live-stats" aria-live="polite">
+            <span data-live-speed>速度检测中</span>
+            <span data-live-buffer>缓冲 0 秒</span>
+          </div>
+          <button class="live-control" type="button" data-live-fullscreen aria-label="全屏">
+            <i data-lucide="maximize"></i>
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <div class="toast-region" data-toast-region aria-live="polite"></div>
     <script src="/vendor/lucide.js"></script>
+    <script src="/vendor/hls.js"></script>
     <script src="/mockup.js"></script>
   </body>
 </html>

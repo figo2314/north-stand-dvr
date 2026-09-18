@@ -48,6 +48,10 @@
     matches: [],
     filter: "all",
     query: "",
+    hls: null,
+    liveMatch: null,
+    liveStatsTimer: null,
+    settings: null,
     scheduled: readScheduledMatches()
   };
 
@@ -111,10 +115,26 @@
     const beforeTeams = channel.name.slice(0, versusIndex).trim();
     const afterTeams = channel.name.slice(versusIndex + 2).trim();
     const beforeParts = beforeTeams.split(/\s+/);
-    const awayParts = afterTeams.split(/\s+/);
+    const feedText = afterTeams
+      .replace(/\s*\d{2}:\d{2}\s*$/, "")
+      .trim();
+    const awayParts = feedText.split(/\s+/);
     const league = beforeParts.shift() || "足球";
     const home = beforeParts.join(" ") || "主队";
     const away = awayParts.shift() || "客队";
+    const remainingFeed = awayParts.join(" ").trim();
+    const replayMatch = remainingFeed.match(/^(.+?)（(.+)）$/);
+    const isOriginalFeed = /(原声|字幕|智能解说)/.test(remainingFeed);
+    const feed = replayMatch
+      ? replayMatch[1].trim()
+      : remainingFeed && isOriginalFeed
+        ? remainingFeed
+        : "中文解说";
+    const commentator = replayMatch
+      ? replayMatch[2].trim()
+      : remainingFeed && !isOriginalFeed
+        ? remainingFeed
+        : "";
     const groupDate = parseGroupDate(channel.group);
     if (!groupDate) {
       return null;
@@ -135,6 +155,8 @@
       league,
       home,
       away,
+      feed,
+      commentator,
       kickoffAt: groupDate,
       endAt,
       status
@@ -197,7 +219,7 @@
   }
 
   function sourceLabel(match) {
-    return match.name.includes("赛场原声") ? "赛场原声" : "中文解说";
+    return `${match.feed || "中文解说"}${match.commentator ? ` · ${match.commentator}` : ""}`;
   }
 
   function renderMatches() {
@@ -210,7 +232,7 @@
         if (!query) {
           return true;
         }
-        return `${match.home} ${match.away} ${match.league} ${match.name} ${match.group}`
+        return `${match.home} ${match.away} ${match.league} ${match.feed} ${match.commentator} ${match.name} ${match.group}`
           .toLocaleLowerCase("zh-CN")
           .includes(query);
       })
@@ -300,18 +322,31 @@
               </div>
             </div>
             <div class="radar-match__channel">
-              <strong>${escapeHtml(match.name.includes("赛场原声") ? "赛场原声" : "中文解说")}</strong>
-              <span>${escapeHtml(match.group)}</span>
+              <strong>${escapeHtml(match.feed || "中文解说")}</strong>
+              <span>${escapeHtml(
+                match.commentator ? `解说：${match.commentator}` : match.group
+              )}</span>
             </div>
-            <button
-              class="radar-record${hasAction ? " is-added" : ""}"
-              type="button"
-              data-schedule-match="${escapeHtml(match.id)}"
-              aria-pressed="${hasAction}"
-              ${canAct ? "" : "disabled"}
-            >
-              ${actionLabel}
-            </button>
+            <div class="radar-actions">
+              <button
+                class="radar-watch"
+                type="button"
+                data-watch-live="${escapeHtml(match.id)}"
+                ${match.status === "upcoming" ? "disabled" : ""}
+              >
+                <i data-lucide="play"></i>
+                ${match.status === "live" ? "看直播" : match.status === "ended" ? "看回放" : "未开赛"}
+              </button>
+              <button
+                class="radar-record${hasAction ? " is-added" : ""}"
+                type="button"
+                data-schedule-match="${escapeHtml(match.id)}"
+                aria-pressed="${hasAction}"
+                ${canAct ? "" : "disabled"}
+              >
+                ${actionLabel}
+              </button>
+            </div>
           </article>
         `;
       })
@@ -387,6 +422,7 @@
       let sourceUrl = "";
       if (stateResponse?.ok) {
         const statePayload = await stateResponse.json();
+        app.settings = statePayload.settings || null;
         sourceUrl = String(statePayload.settings?.m3uUrl || "").trim();
         reconcileScheduledMatches(statePayload.fixtures || []);
       }
@@ -511,10 +547,196 @@
     }
   }
 
+  function formatBitrate(value) {
+    const bits = Number(value) || 0;
+    if (bits >= 1_000_000) {
+      return `${(bits / 1_000_000).toFixed(bits >= 10_000_000 ? 0 : 1)} Mbps`;
+    }
+    if (bits >= 1_000) {
+      return `${Math.round(bits / 1_000)} Kbps`;
+    }
+    return "速度检测中";
+  }
+
+  function applyLiveMask() {
+    const mask = app.settings?.mask || {};
+    const shield = $("[data-live-shield]");
+    shield.style.setProperty("--live-mask-x", `${Number(mask.x) || 3.5}%`);
+    shield.style.setProperty("--live-mask-y", `${Number(mask.y) || 3}%`);
+    shield.style.setProperty("--live-mask-width", `${Number(mask.width) || 37}%`);
+    shield.style.setProperty("--live-mask-height", `${Number(mask.height) || 11}%`);
+    shield.style.setProperty("--live-mask-color", mask.color || "#05070a");
+  }
+
+  function updateLiveButton() {
+    const video = $("[data-live-video]");
+    $("[data-live-toggle]").innerHTML = `<i data-lucide="${
+      video.paused ? "play" : "pause"
+    }"></i>`;
+    refreshIcons();
+  }
+
+  function updateLiveStats() {
+    const video = $("[data-live-video]");
+    const hls = app.hls;
+    const network = hls?.bandwidthEstimate || 0;
+    const level =
+      hls && hls.currentLevel >= 0 ? hls.levels[hls.currentLevel] : null;
+    $("[data-live-speed]").textContent = [
+      `实时 ${formatBitrate(network)}`,
+      level?.height ? `${level.height}p` : ""
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    let buffer = 0;
+    for (let index = 0; index < video.buffered.length; index += 1) {
+      if (
+        video.buffered.start(index) <= video.currentTime &&
+        video.buffered.end(index) >= video.currentTime
+      ) {
+        buffer = Math.max(0, video.buffered.end(index) - video.currentTime);
+        break;
+      }
+    }
+    $("[data-live-buffer]").textContent = `缓冲 ${buffer.toFixed(1)} 秒`;
+    if (level) {
+      $("[data-live-quality]").value = String(hls.currentLevel);
+    }
+  }
+
+  function renderLiveQuality(levels) {
+    const select = $("[data-live-quality]");
+    select.innerHTML = [
+      '<option value="-1">自动</option>',
+      ...levels.map((level, index) => {
+        const label = `${level.height ? `${level.height}p` : `线路 ${index + 1}`} · ${formatBitrate(
+          level.bitrate
+        )}`;
+        return `<option value="${index}">${escapeHtml(label)}</option>`;
+      })
+    ].join("");
+  }
+
+  function destroyLivePlayer() {
+    window.clearInterval(app.liveStatsTimer);
+    app.liveStatsTimer = null;
+    app.hls?.destroy();
+    app.hls = null;
+    app.liveMatch = null;
+    const video = $("[data-live-video]");
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    $("[data-live-message]").hidden = true;
+  }
+
+  function openLivePlayer(matchId) {
+    const match = app.matches.find((item) => item.id === matchId);
+    if (!match) {
+      return;
+    }
+    destroyLivePlayer();
+    app.liveMatch = match;
+    $("[data-live-title]").textContent = `${match.home} vs ${match.away} · ${
+      match.feed || "中文解说"
+    }${match.commentator ? ` · ${match.commentator}` : ""}`;
+    applyLiveMask();
+    const dialog = $("[data-live-dialog]");
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+    const video = $("[data-live-video]");
+    const message = $("[data-live-message]");
+    message.hidden = false;
+    message.querySelector("strong").textContent = "正在连接直播源";
+    message.querySelector("p").textContent = "首次连接可能需要几秒钟。";
+    const source = `/api/live/proxy?url=${encodeURIComponent(match.streamUrl)}`;
+
+    if (window.Hls?.isSupported()) {
+      const hls = new window.Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        liveSyncDurationCount: 3,
+        maxBufferLength: 30,
+        backBufferLength: 30,
+        maxLiveSyncPlaybackRate: 1.5,
+        abrEwmaDefaultEstimate: 8_000_000
+      });
+      app.hls = hls;
+      hls.loadSource(source);
+      hls.attachMedia(video);
+      hls.on(window.Hls.Events.MANIFEST_PARSED, (_, data) => {
+        renderLiveQuality(data.levels || []);
+        if (data.levels?.length) {
+          hls.currentLevel = data.levels.length - 1;
+        }
+        video.play().catch(() => {});
+        updateLiveStats();
+      });
+      hls.on(window.Hls.Events.LEVEL_SWITCHED, updateLiveStats);
+      hls.on(window.Hls.Events.ERROR, (_, data) => {
+        if (!data.fatal) {
+          return;
+        }
+        message.hidden = false;
+        message.querySelector("strong").textContent = "直播连接中断";
+        message.querySelector("p").textContent = "正在尝试恢复播放。";
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+          hls.startLoad();
+        } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+          hls.recoverMediaError();
+        } else {
+          destroyLivePlayer();
+          message.hidden = false;
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = source;
+      video.play().catch(() => {});
+    } else {
+      message.querySelector("strong").textContent = "浏览器不支持 HLS 直播";
+      message.querySelector("p").textContent = "请使用最新版 Chrome、Edge 或 Safari。";
+      return;
+    }
+
+    video.addEventListener(
+      "canplay",
+      () => {
+        message.hidden = true;
+        updateLiveButton();
+        updateLiveStats();
+      },
+      { once: true }
+    );
+    app.liveStatsTimer = window.setInterval(updateLiveStats, 1000);
+  }
+
+  function toggleLivePlayback() {
+    const video = $("[data-live-video]");
+    if (video.paused) {
+      if (
+        app.hls?.liveSyncPosition &&
+        Math.abs(video.currentTime - app.hls.liveSyncPosition) > 20
+      ) {
+        video.currentTime = app.hls.liveSyncPosition;
+      }
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+    updateLiveButton();
+  }
+
   document.addEventListener("click", (event) => {
     const scheduleButton = event.target.closest("[data-schedule-match]");
     if (scheduleButton) {
       toggleSchedule(scheduleButton.dataset.scheduleMatch, scheduleButton);
+      return;
+    }
+    const watchButton = event.target.closest("[data-watch-live]");
+    if (watchButton) {
+      openLivePlayer(watchButton.dataset.watchLive);
       return;
     }
     const filterButton = event.target.closest("[data-radar-filter]");
@@ -533,6 +755,50 @@
       loadSource();
     }
   });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-live-close]")) {
+      $("[data-live-dialog]").close();
+      return;
+    }
+    if (event.target.closest("[data-live-toggle]")) {
+      toggleLivePlayback();
+      return;
+    }
+    if (event.target.closest("[data-live-mute]")) {
+      const video = $("[data-live-video]");
+      video.muted = !video.muted;
+      event.target.closest("[data-live-mute]").innerHTML = `<i data-lucide="${
+        video.muted ? "volume-x" : "volume-2"
+      }"></i>`;
+      refreshIcons();
+      return;
+    }
+    if (event.target.closest("[data-live-mask]")) {
+      $("[data-live-shield]").classList.toggle("is-hidden");
+      return;
+    }
+    if (event.target.closest("[data-live-fullscreen]")) {
+      const stage = $("[data-live-stage]");
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        stage.requestFullscreen?.();
+      }
+    }
+  });
+
+  $("[data-live-quality]").addEventListener("change", (event) => {
+    if (!app.hls) {
+      return;
+    }
+    app.hls.currentLevel = Number(event.target.value);
+    updateLiveStats();
+  });
+
+  $("[data-live-dialog]").addEventListener("close", destroyLivePlayer);
+  $("[data-live-video]").addEventListener("play", updateLiveButton);
+  $("[data-live-video]").addEventListener("pause", updateLiveButton);
 
   document.addEventListener("input", (event) => {
     if (!event.target.matches("[data-radar-search]")) {

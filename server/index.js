@@ -7,6 +7,8 @@ const path = require("node:path");
 const express = require("express");
 const ffmpegPath = process.env.FFMPEG_BIN || require("ffmpeg-static");
 const { createBasicAuth, parseBasicUsers } = require("./auth");
+const { createLiveProxy } = require("./live");
+const { EventLog } = require("./logger");
 const { JsonStore } = require("./store");
 const {
   getActiveJobs,
@@ -24,10 +26,20 @@ const HOST = process.env.HOST || "127.0.0.1";
 const ROOT = path.resolve(__dirname, "..");
 const DB_PATH = path.join(ROOT, "data", "db.json");
 const store = new JsonStore(DB_PATH);
+const eventLog = new EventLog(path.join(ROOT, "data", "logs.jsonl"));
+const liveProxy = createLiveProxy();
 
 const processingJobs = new Map();
 let schedulerTimer = null;
 let lastSchedulerError = null;
+
+function fixtureLogContext(fixture) {
+  return {
+    fixtureId: fixture.id,
+    fixture: `${fixture.home} vs ${fixture.away}`,
+    competition: fixture.competition || "足球比赛"
+  };
+}
 
 function asyncRoute(handler) {
   return (request, response, next) => {
@@ -161,11 +173,23 @@ async function attemptScheduledRecording(fixture, { bypassWindow = false } = {})
     }
     if (window.state === "expired") {
       await store.updateFixture(fixture.id, { status: "missed" });
+      await eventLog.record(
+        "warning",
+        "recording.missed",
+        "录制窗口已经结束",
+        fixtureLogContext(fixture)
+      );
       return { started: false, reason: "expired" };
     }
   }
   if (!fixture.streamUrl) {
     await store.updateFixture(fixture.id, { status: "needs-source" });
+    await eventLog.record(
+      "warning",
+      "recording.needs_source",
+      "比赛没有配置直播流地址",
+      fixtureLogContext(fixture)
+    );
     return { started: false, reason: "missing-stream-url" };
   }
 
@@ -184,14 +208,40 @@ async function attemptScheduledRecording(fixture, { bypassWindow = false } = {})
         status: "recorded",
         recordingId
       });
+      await eventLog.record(
+        "info",
+        "recording.completed",
+        "录像已保存",
+        {
+          ...fixtureLogContext(fixture),
+          recordingId,
+          sizeBytes: details.sizeBytes,
+          durationSeconds: recording.durationSeconds
+        }
+      );
     },
     onError: async (error) => {
       processingJobs.delete(fixture.id);
       lastSchedulerError = error.message;
-      await store.updateFixture(fixture.id, { status: "failed" });
+      await store.updateFixture(fixture.id, {
+        status: "failed",
+        failureReason: error.message
+      });
+      await eventLog.record(
+        "error",
+        "recording.failed",
+        error.message,
+        fixtureLogContext(fixture)
+      );
     },
     onCanceled: async () => {
       processingJobs.delete(fixture.id);
+      await eventLog.record(
+        "warning",
+        "recording.canceled",
+        "录制已取消，临时文件已删除",
+        fixtureLogContext(fixture)
+      );
       await store.removeFixture(fixture.id);
     }
   });
@@ -199,6 +249,16 @@ async function attemptScheduledRecording(fixture, { bypassWindow = false } = {})
   if (result.started) {
     processingJobs.set(fixture.id, recordingId);
     await store.updateFixture(fixture.id, { status: "recording" });
+    await eventLog.record(
+      "info",
+      "recording.started",
+      "FFmpeg 已开始录制",
+      {
+        ...fixtureLogContext(fixture),
+        outputPath: result.outputPath,
+        durationSeconds: result.durationSeconds
+      }
+    );
     return { started: true };
   }
 
@@ -212,6 +272,12 @@ async function attemptScheduledRecording(fixture, { bypassWindow = false } = {})
   });
   if (result.reason !== "already-recording") {
     lastSchedulerError = result.reason;
+    await eventLog.record(
+      "error",
+      "recording.start_failed",
+      result.reason || "录制启动失败",
+      fixtureLogContext(fixture)
+    );
   }
   return { started: false, reason: result.reason || "recording-failed" };
 }
@@ -238,6 +304,7 @@ async function runScheduler() {
   } catch (error) {
     lastSchedulerError = error.message;
     console.error("[scheduler]", error);
+    await eventLog.record("error", "scheduler.failed", error.message);
   }
 }
 
@@ -250,6 +317,12 @@ async function recoverInterruptedRecordings() {
       status: "failed",
       failureReason: "服务重启，上一次录制未完成"
     });
+    await eventLog.record(
+      "warning",
+      "recording.interrupted",
+      "服务重启，上一次录制未完成",
+      fixtureLogContext(fixture)
+    );
   }
 }
 
@@ -311,6 +384,9 @@ app.use(express.static(path.join(ROOT, "public")));
 app.get("/vendor/lucide.js", (request, response) => {
   response.sendFile(path.join(ROOT, "node_modules", "lucide", "dist", "umd", "lucide.min.js"));
 });
+app.get("/vendor/hls.js", (request, response) => {
+  response.sendFile(path.join(ROOT, "node_modules", "hls.js", "dist", "hls.min.js"));
+});
 
 app.get(
   "/api/state",
@@ -328,6 +404,29 @@ app.get(
     response.json(await healthSnapshot());
   })
 );
+
+app.get(
+  "/api/logs",
+  asyncRoute(async (request, response) => {
+    response.json({
+      entries: eventLog.list({
+        limit: request.query.limit,
+        level: request.query.level,
+        fixtureId: request.query.fixtureId
+      })
+    });
+  })
+);
+
+app.delete(
+  "/api/logs",
+  asyncRoute(async (request, response) => {
+    await eventLog.clear();
+    response.status(204).end();
+  })
+);
+
+app.get("/api/live/proxy", asyncRoute(liveProxy));
 
 app.get(
   "/api/system/diagnostics",
@@ -417,6 +516,7 @@ app.post(
     }
 
     const settings = await store.updateSettings(patch);
+    await eventLog.record("info", "settings.updated", "设置已更新");
     response.json({ settings });
   })
 );
@@ -445,6 +545,12 @@ app.post(
       result: null
     };
     await store.addFixture(fixture);
+    await eventLog.record(
+      "info",
+      "fixture.created",
+      "已加入录制日程",
+      fixtureLogContext(fixture)
+    );
     response.status(201).json({ fixture });
     await runScheduler();
   })
@@ -513,6 +619,12 @@ app.delete(
     }
 
     await store.removeFixture(fixture.id);
+    await eventLog.record(
+      "info",
+      "fixture.removed",
+      "已从录制日程移除",
+      fixtureLogContext(fixture)
+    );
     response.status(204).end();
   })
 );
@@ -676,10 +788,12 @@ app.post(
   asyncRoute(async (request, response) => {
     const streamUrl = requireString(request.body?.url, "频道地址", 2000);
     const inputFormat = request.body?.inputFormat === "hls" ? "hls" : "auto";
+    const quick = request.body?.quick === true;
     const result = await probeStream({
       url: streamUrl,
       inputFormat,
-      durationSeconds: 4
+      durationSeconds: 4,
+      frames: quick ? 1 : 0
     });
     response.status(result.ok ? 200 : 422).json(result);
   })
@@ -750,6 +864,11 @@ app.delete(
     }
 
     await store.removeRecording(recording.id);
+    await eventLog.record("info", "recording.deleted", "录像已从库中删除", {
+      recordingId: recording.id,
+      fixtureId: recording.fixtureId,
+      title: recording.title
+    });
     if (recording.fixtureId) {
       const fixture = store.findFixture(recording.fixtureId);
       if (fixture) {
@@ -870,6 +989,13 @@ app.use((error, request, response, next) => {
   if (status >= 500) {
     console.error(error);
   }
+  eventLog
+    .record(status >= 500 ? "error" : "warning", "request.failed", error.message, {
+      method: request.method,
+      path: request.path,
+      status
+    })
+    .catch(() => {});
   response.status(status).json({
     error: status >= 500 ? "服务器处理失败" : error.message
   });
@@ -877,8 +1003,14 @@ app.use((error, request, response, next) => {
 
 async function boot() {
   await store.init();
+  await eventLog.init();
   await fsp.mkdir(path.resolve(ROOT, store.settings.recordingDir), { recursive: true });
   await recoverInterruptedRecordings();
+  await eventLog.record("info", "app.started", "北看台服务已启动", {
+    host: HOST,
+    port: PORT,
+    pid: process.pid
+  });
   schedulerTimer = setInterval(runScheduler, 30_000);
   schedulerTimer.unref();
   await runScheduler();

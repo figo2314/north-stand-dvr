@@ -13,6 +13,8 @@
     cancelRecordingTarget: null,
     previewFixtureId: null,
     previewTimer: null,
+    logs: [],
+    logLevel: "",
     m3uChannels: []
   };
 
@@ -560,6 +562,114 @@
     refreshIcons();
   }
 
+  function logEventLabel(event) {
+    const labels = {
+      "app.started": "服务启动",
+      "recording.started": "开始录制",
+      "recording.completed": "录制完成",
+      "recording.failed": "录制失败",
+      "recording.missed": "错过窗口",
+      "recording.needs_source": "缺少直播源",
+      "recording.start_failed": "启动失败",
+      "recording.canceled": "取消录制",
+      "recording.interrupted": "录制中断",
+      "recording.deleted": "删除录像",
+      "fixture.created": "加入日程",
+      "fixture.removed": "移除日程",
+      "settings.updated": "更新设置",
+      "scheduler.failed": "调度异常",
+      "request.failed": "请求失败"
+    };
+    return labels[event] || event || "运行事件";
+  }
+
+  function renderLogs() {
+    const list = $("[data-log-list]");
+    const entries = app.logs.filter(
+      (entry) => !app.logLevel || entry.level === app.logLevel
+    );
+    $("[data-log-summary]").textContent = entries.length
+      ? `共显示 ${entries.length} 条记录，最新的在前。`
+      : "当前筛选范围内没有日志。";
+
+    if (!entries.length) {
+      list.innerHTML = `
+        <div class="schedule-empty">
+          <i data-lucide="scroll-text"></i>
+          <h3>暂无运行记录</h3>
+          <p>录制调度和错误会自动记录在这里。</p>
+        </div>
+      `;
+      refreshIcons();
+      return;
+    }
+
+    list.innerHTML = entries
+      .map((entry) => {
+        const context = [
+          entry.fixture,
+          entry.path,
+          entry.status ? `HTTP ${entry.status}` : "",
+          entry.sizeBytes ? formatBytes(entry.sizeBytes) : "",
+          entry.durationSeconds ? formatClock(entry.durationSeconds) : ""
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return `
+          <article class="runtime-log is-${escapeHtml(entry.level)}">
+            <span class="runtime-log__level">
+              <i data-lucide="${
+                entry.level === "error"
+                  ? "circle-x"
+                  : entry.level === "warning"
+                    ? "triangle-alert"
+                    : "info"
+              }"></i>
+              ${entry.level === "error" ? "错误" : entry.level === "warning" ? "警告" : "信息"}
+            </span>
+            <div class="runtime-log__body">
+              <div class="runtime-log__heading">
+                <strong>${escapeHtml(logEventLabel(entry.event))}</strong>
+                <time>${escapeHtml(
+                  new Intl.DateTimeFormat("zh-CN", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false
+                  }).format(new Date(entry.timestamp))
+                )}</time>
+              </div>
+              <p>${escapeHtml(entry.message || "")}</p>
+              ${context ? `<small>${escapeHtml(context)}</small>` : ""}
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+    refreshIcons();
+  }
+
+  async function loadLogs() {
+    const level = app.logLevel
+      ? `&level=${encodeURIComponent(app.logLevel)}`
+      : "";
+    const result = await api(`/api/logs?limit=300${level}`);
+    app.logs = result.entries || [];
+    renderLogs();
+  }
+
+  async function clearLogs() {
+    if (!window.confirm("确定清空本机运行日志吗？")) {
+      return;
+    }
+    await api("/api/logs", { method: "DELETE" });
+    app.logs = [];
+    renderLogs();
+    toast("运行日志已清空");
+  }
+
   function populateSettings() {
     const form = $("[data-settings-form]");
     const settings = app.data.settings;
@@ -604,12 +714,22 @@
   }
 
   function navigate(view) {
-    if (!["home", "schedule", "settings"].includes(view)) {
+    if (!["home", "schedule", "logs", "settings"].includes(view)) {
       view = "home";
     }
     app.view = view;
     for (const button of $$("[data-view]")) {
       button.classList.toggle("is-active", button.dataset.view === view);
+    }
+    for (const tab of $$("[data-mobile-tab]")) {
+      const tabView = tab.dataset.mobileTab;
+      const active = tabView === view || (view === "logs" && tabView === "settings");
+      tab.classList.toggle("is-active", active);
+      if (active) {
+        tab.setAttribute("aria-current", "page");
+      } else {
+        tab.removeAttribute("aria-current");
+      }
     }
     for (const panel of $$("[data-view-panel]")) {
       const active = panel.dataset.viewPanel === view;
@@ -618,6 +738,9 @@
     }
     window.history.replaceState(null, "", `#${view}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (view === "logs") {
+      loadLogs().catch((error) => toast("无法读取日志", error.message, "error"));
+    }
   }
 
   function openScheduleDialog(fixture = null) {
@@ -1337,6 +1460,16 @@
         return;
       }
 
+      if (event.target.closest("[data-refresh-logs]")) {
+        loadLogs().catch((error) => toast("无法读取日志", error.message, "error"));
+        return;
+      }
+
+      if (event.target.closest("[data-clear-logs]")) {
+        clearLogs().catch((error) => toast("无法清空日志", error.message, "error"));
+        return;
+      }
+
       if (event.target.closest("[data-import-open]")) {
         $("[data-import-dialog]").showModal();
         return;
@@ -1463,6 +1596,10 @@
     $("[data-channel-search]").addEventListener("input", (event) => {
       renderM3uResults(event.target.value);
     });
+    $("[data-log-level]").addEventListener("change", (event) => {
+      app.logLevel = event.target.value;
+      loadLogs().catch((error) => toast("无法读取日志", error.message, "error"));
+    });
 
     $("[data-reveal-dialog]").addEventListener("close", (event) => {
       if (event.currentTarget.returnValue === "confirm") {
@@ -1544,6 +1681,9 @@
         app.data.health = await api("/api/health");
         renderHealth();
         renderSchedule();
+        if (app.view === "logs") {
+          await loadLogs();
+        }
       } catch {
         // Keep the last known status while the local service is temporarily busy.
       }

@@ -2,6 +2,7 @@ node_modules/
 recordings/
 data/db.json
 data/*.tmp
+data/logs.jsonl
 data/previews/
 test-results/
 playwright-report/

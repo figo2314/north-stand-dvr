@@ -26,7 +26,7 @@ function createResponse() {
 }
 
 test("parseBasicUsers accepts hashed credentials and ignores malformed entries", () => {
-  const hash = hashPassword("a12345678", "heiwa");
+  const hash = hashPassword("test-password-42", "heiwa");
   const users = parseBasicUsers(`heiwa:${hash},broken,other:not-a-hash`);
 
   assert.equal(users.size, 1);
@@ -34,7 +34,7 @@ test("parseBasicUsers accepts hashed credentials and ignores malformed entries",
 });
 
 test("basic auth accepts the configured user and rejects bad passwords", () => {
-  const hash = hashPassword("a12345678", "heiwa");
+  const hash = hashPassword("test-password-42", "heiwa");
   const basicAuth = createBasicAuth({
     users: parseBasicUsers(`heiwa:${hash}`),
     realm: "Test Realm"
@@ -44,7 +44,9 @@ test("basic auth accepts the configured user and rejects bad passwords", () => {
   basicAuth(
     {
       headers: {
-        authorization: `Basic ${Buffer.from("heiwa:a12345678").toString("base64")}`
+        authorization: `Basic ${Buffer.from(
+          "heiwa:test-password-42"
+        ).toString("base64")}`
       }
     },
     createResponse(),

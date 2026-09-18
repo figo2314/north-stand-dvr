@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172039" />
+    <title>直播频道 · 北看台</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/channels.css" />
+  </head>
+  <body class="channel-shell">
+    <header class="channel-header">
+      <a class="channel-brand" href="/">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <path d="M20 4 35 11v9c0 8.4-6.1 14.1-15 17-8.9-2.9-15-8.6-15-17v-9L20 4Z" />
+            <path d="m13 27 7-15 7 15h-4.2l-1.2-3h-3.4l-1.1 3H13Zm6.2-6h1.8L20 17.8 19.2 21Z" />
+          </svg>
+        </span>
+        <span>
+          <strong>北看台</strong>
+          <small>直播频道</small>
+        </span>
+      </a>
+      <nav>
+        <a href="/">待看录像</a>
+        <a href="/mockup.html">比赛雷达</a>
+        <a class="is-active" href="/channels.html">直播频道</a>
+      </nav>
+      <span class="channel-source-state" data-source-state>
+        <i data-lucide="loader-circle"></i>
+        正在读取直播源
+      </span>
+    </header>
+
+    <main class="channel-layout">
+      <section class="channel-player-panel" aria-labelledby="channel-title">
+        <div class="channel-stage" data-channel-stage>
+          <video data-channel-video playsinline preload="metadata"></video>
+          <div class="channel-message" data-channel-message>
+            <i data-lucide="tv-minimal-play"></i>
+            <strong>选择一个频道开始播放</strong>
+            <p>首次连接通常需要几秒钟。</p>
+            <button
+              class="channel-message__retry"
+              type="button"
+              data-channel-retry
+              hidden
+            >
+              <i data-lucide="refresh-cw"></i>
+              重新连接
+            </button>
+          </div>
+        </div>
+
+        <div class="channel-player-heading">
+          <div>
+            <p class="day-line" data-channel-group>直播频道</p>
+            <h1 id="channel-title" data-channel-title>请选择频道</h1>
+          </div>
+          <div class="channel-live-stats" aria-live="polite">
+            <span data-channel-speed>速度检测中</span>
+            <span data-channel-buffer>缓冲 0 秒</span>
+          </div>
+        </div>
+
+        <div class="channel-player-controls">
+          <button class="channel-control" type="button" data-channel-toggle aria-label="播放或暂停">
+            <i data-lucide="play"></i>
+          </button>
+          <button class="channel-control" type="button" data-channel-mute aria-label="静音">
+            <i data-lucide="volume-2"></i>
+          </button>
+          <label class="channel-quality">
+            <span>画质</span>
+            <select data-channel-quality>
+              <option value="-1">自动</option>
+            </select>
+          </label>
+          <button class="channel-control channel-control--push" type="button" data-channel-fullscreen aria-label="全屏">
+            <i data-lucide="maximize"></i>
+          </button>
+        </div>
+      </section>
+
+      <aside class="channel-browser" aria-labelledby="channel-list-title">
+        <div class="channel-browser__heading">
+          <div>
+            <h2 id="channel-list-title">频道列表</h2>
+            <p data-channel-summary>正在读取频道…</p>
+          </div>
+          <div class="channel-browser__actions">
+            <button
+              class="text-button channel-preflight"
+              type="button"
+              data-channel-preflight
+            >
+              <i data-lucide="scan-search"></i>
+              <span data-preflight-label>预检列表</span>
+            </button>
+            <button
+              class="text-button channel-refresh"
+              type="button"
+              data-channel-refresh
+              aria-label="刷新直播源"
+              title="刷新直播源"
+            >
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+        </div>
+
+        <label class="channel-search">
+          <i data-lucide="search"></i>
+          <input type="search" placeholder="搜索频道或分组" autocomplete="off" data-channel-search />
+        </label>
+
+        <div class="channel-groups" data-channel-groups></div>
+        <div class="channel-list" data-channel-list>
+          <div class="skeleton-row channel-skeleton"><span></span><span></span></div>
+        </div>
+      </aside>
+    </main>
+
+    <nav class="mobile-tabbar" aria-label="手机主导航">
+      <a class="mobile-tab" href="/#home">
+        <i data-lucide="library-big"></i>
+        <span>录像</span>
+      </a>
+      <a class="mobile-tab" href="/#schedule">
+        <i data-lucide="calendar-clock"></i>
+        <span>日程</span>
+      </a>
+      <a class="mobile-tab" href="/mockup.html">
+        <i data-lucide="radar"></i>
+        <span>雷达</span>
+      </a>
+      <a class="mobile-tab is-active" href="/channels.html" aria-current="page">
+        <i data-lucide="tv-minimal-play"></i>
+        <span>频道</span>
+      </a>
+      <a class="mobile-tab" href="/#settings">
+        <i data-lucide="sliders-horizontal"></i>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <div class="toast-region" data-toast-region aria-live="polite"></div>
+    <script src="/vendor/lucide.js"></script>
+    <script src="/vendor/hls.js"></script>
+    <script src="/channels.js"></script>
+  </body>
+</html>

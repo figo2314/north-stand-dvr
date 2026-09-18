@@ -31,6 +31,18 @@ Updated: 2026-09-16
   source resolves to IPv6 only.
 - Active recordings expose live progress, periodic frame previews, graceful
   stop-and-save, and cancel-and-discard controls.
+- Persistent runtime logs cover scheduler failures, source errors, recording
+  start/complete/failure/missed states, settings, and library operations.
+- Radar entries retain and display commentator names when the M3U source
+  includes them; commentator names are also searchable.
+- Live and replay feeds can be watched directly through a same-origin HLS
+  proxy, with HD level selection, bitrate/buffer stats, score shielding, and
+  pause/resume controls.
+- A dedicated live-channel page lists all non-football M3U groups with search,
+  group filters, H.264-aware quality selection, channel fallback, and the same
+  live playback controls.
+- Channel rows progressively show detected resolution labels with a six-hour
+  local cache; unavailable channels are marked without repeatedly probing them.
 - `/api/state` responded successfully.
 - The configured M3U source returned 137 channels and 13 sports channels.
 
