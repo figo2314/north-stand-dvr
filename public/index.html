@@ -26,7 +26,26 @@
           </span>
         </a>
 
+        <div class="rail-arsenal-strip" aria-label="Arsenal, North London Forever">
+          <span class="rail-arsenal-mark">A</span>
+          <span>
+            <strong>ARSENAL</strong>
+            <small>NORTH LONDON FOREVER</small>
+          </span>
+        </div>
+
         <nav class="rail-nav">
+          <button
+            class="nav-item rail-music-toggle"
+            type="button"
+            data-music-toggle
+            aria-pressed="false"
+            aria-label="播放队歌"
+            title="播放队歌"
+          >
+            <i data-lucide="music-2"></i>
+            <span data-music-label>播放队歌</span>
+          </button>
           <button class="nav-item is-active" type="button" data-view="home">
             <i data-lucide="library-big"></i>
             <span>待看录像</span>
@@ -80,13 +99,63 @@
             </span>
             <strong data-display-name>北看台</strong>
           </a>
-          <button class="icon-button" type="button" data-open-schedule aria-label="添加录制">
-            <i data-lucide="plus"></i>
-          </button>
+          <div class="mobile-arsenal-strip" aria-label="Arsenal, North London Forever">
+            <span class="mobile-arsenal-mark">A</span>
+            <span>
+              <strong>ARSENAL</strong>
+              <small>NORTH LONDON FOREVER</small>
+            </span>
+          </div>
+          <div class="mobile-bar__actions">
+            <button
+              class="icon-button mobile-music-toggle"
+              type="button"
+              data-music-toggle
+              aria-pressed="false"
+              aria-label="播放队歌"
+              title="播放队歌"
+            >
+              <i data-lucide="music-2"></i>
+              <span class="sr-only" data-music-label>播放队歌</span>
+            </button>
+            <button class="icon-button" type="button" data-open-schedule aria-label="添加录制">
+              <i data-lucide="plus"></i>
+            </button>
+          </div>
         </header>
 
         <main>
           <section class="view is-active" data-view-panel="home">
+            <div class="home-backdrop" data-home-backdrop aria-hidden="true">
+              <span
+                class="home-backdrop__layer home-backdrop__layer--trophy is-active"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--poster"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--squad"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--ribbon-trophy"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--confetti-celebration"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--red-confetti"
+                data-home-backdrop-layer
+              ></span>
+              <span
+                class="home-backdrop__layer home-backdrop__layer--legends-trophy"
+                data-home-backdrop-layer
+              ></span>
+            </div>
             <header class="page-header">
               <div>
                 <p class="day-line" data-day-line>比赛已经替你收好</p>
@@ -684,6 +753,16 @@
         </main>
       </div>
     </div>
+
+    <audio
+      data-home-music
+      src="/audio/the-angel-north-london-forever.m4a"
+      data-home-music-playlist='["/audio/the-angel-north-london-forever.m4a","/audio/north-london-forever-2.mp3"]'
+      autoplay
+      muted
+      preload="metadata"
+      aria-hidden="true"
+    ></audio>
 
     <nav class="mobile-tabbar" aria-label="手机主导航">
       <button

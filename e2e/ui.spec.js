@@ -583,6 +583,8 @@ test("mobile home shows a compact launcher and opens the recording library", asy
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
 
   await expect(page.locator(".home-mobile-launcher")).toBeVisible();
+  await expect(page.locator(".mobile-arsenal-strip")).toContainText("ARSENAL");
+  await expect(page.locator(".mobile-music-toggle")).toBeVisible();
   await expect(
     page.locator(".home-live-entry:not(.home-live-entry--football)")
   ).toContainText("电视直播");
@@ -603,6 +605,166 @@ test("mobile home shows a compact launcher and opens the recording library", asy
 
   await page.locator("[data-mobile-library-back]").click();
   await expect(page.locator(".home-mobile-launcher")).toBeVisible();
+});
+
+test("home Arsenal anthem is bundled and can be played or paused", async ({
+  page
+}) => {
+  const assetResponse = await page.request.get(
+    "/audio/the-angel-north-london-forever.m4a"
+  );
+  expect(assetResponse.ok()).toBe(true);
+  expect(assetResponse.headers()["content-type"]).toContain("audio");
+  const secondAssetResponse = await page.request.get(
+    "/audio/north-london-forever-2.mp3"
+  );
+  expect(secondAssetResponse.ok()).toBe(true);
+  expect(secondAssetResponse.headers()["content-type"]).toContain("audio");
+
+  await page.goto("/#home", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".rail-arsenal-strip")).toContainText(
+    "NORTH LONDON FOREVER"
+  );
+
+  const musicToggle = page.locator(".rail-music-toggle");
+  const musicLabel = page.locator(".rail-music-toggle [data-music-label]");
+  await expect(page.locator("[data-home-music]")).toHaveAttribute(
+    "src",
+    "/audio/the-angel-north-london-forever.m4a"
+  );
+  await page.mouse.click(8, 8);
+  await expect(musicToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(musicLabel).toHaveText("暂停队歌");
+  await expect
+    .poll(() =>
+      page.locator("[data-home-music]").evaluate((audio) => audio.muted)
+    )
+    .toBe(false);
+
+  await page.locator("[data-home-music]").evaluate((audio) => {
+    audio.dispatchEvent(new Event("ended"));
+  });
+  await expect(page.locator("[data-home-music]")).toHaveAttribute(
+    "src",
+    "/audio/north-london-forever-2.mp3"
+  );
+  await expect(page.locator("[data-home-music]")).toHaveAttribute(
+    "data-music-index",
+    "1"
+  );
+
+  await page.locator("[data-home-music]").evaluate((audio) => {
+    audio.dispatchEvent(new Event("ended"));
+  });
+  await expect(page.locator("[data-home-music]")).toHaveAttribute(
+    "src",
+    "/audio/the-angel-north-london-forever.m4a"
+  );
+  await expect(page.locator("[data-home-music]")).toHaveAttribute(
+    "data-music-index",
+    "0"
+  );
+  await page.mouse.click(8, 8);
+  await expect(musicToggle).toHaveAttribute("aria-pressed", "true");
+
+  await musicToggle.click();
+  await expect(musicToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(musicLabel).toHaveText("播放队歌");
+
+  await musicToggle.click();
+  await expect(musicToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(musicLabel).toHaveText("暂停队歌");
+});
+
+test("music resumes after switching to another page", async ({ page }) => {
+  await page.goto("/#home", { waitUntil: "domcontentloaded" });
+  await page.mouse.click(8, 8);
+  await expect(page.locator(".rail-music-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+
+  await Promise.all([
+    page.waitForURL("**/channels.html"),
+    page.locator('.rail-nav a[href="/channels.html"]').click()
+  ]);
+
+  const globalMusic = page.locator("[data-global-music]");
+  await expect(globalMusic).toHaveCount(1);
+  await page.mouse.click(8, 8);
+  await expect
+    .poll(() => globalMusic.evaluate((audio) => audio.paused))
+    .toBe(false);
+
+  const state = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("north-stand-music-state") || "null")
+  );
+  expect(state.playing).toBe(true);
+  expect(state.userPaused).toBe(false);
+});
+
+test("home rotates Arsenal championship backdrops with a fade", async ({
+  page
+}) => {
+  const backdropUrls = [
+    "/images/home-arsenal-trophy.webp",
+    "/images/home-arsenal-champions-poster.webp",
+    "/images/home-arsenal-champions-squad.webp",
+    "/images/home-arsenal-ribbon-trophy.webp",
+    "/images/home-arsenal-confetti-celebration.webp",
+    "/images/home-arsenal-red-confetti.webp",
+    "/images/home-arsenal-legends-trophy.webp"
+  ];
+  for (const url of backdropUrls) {
+    const response = await page.request.get(url);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toContain("image/webp");
+  }
+
+  await page.clock.install();
+  await page.goto("/#home", { waitUntil: "domcontentloaded" });
+  const backdrop = page.locator("[data-home-backdrop]");
+  await expect(backdrop).toBeVisible();
+  await expect(backdrop.locator("[data-home-backdrop-layer]")).toHaveCount(7);
+  await expect(backdrop).toHaveAttribute("data-backdrop-index", "0");
+  await expect(backdrop.locator(".home-backdrop__layer.is-active")).toHaveClass(
+    /home-backdrop__layer--trophy/
+  );
+  await expect
+    .poll(() =>
+      backdrop
+        .locator(".home-backdrop__layer.is-active")
+        .evaluate((node) => getComputedStyle(node).backgroundImage)
+    )
+    .toContain("/images/home-arsenal-trophy.webp");
+
+  const backdropClasses = [
+    "home-backdrop__layer--poster",
+    "home-backdrop__layer--squad",
+    "home-backdrop__layer--ribbon-trophy",
+    "home-backdrop__layer--confetti-celebration",
+    "home-backdrop__layer--red-confetti",
+    "home-backdrop__layer--legends-trophy"
+  ];
+  for (const [index, className] of backdropClasses.entries()) {
+    await page.clock.fastForward(9_000);
+    await expect(backdrop).toHaveAttribute(
+      "data-backdrop-index",
+      String(index + 1)
+    );
+    await expect(backdrop.locator(".home-backdrop__layer.is-active")).toHaveClass(
+      new RegExp(className)
+    );
+    if (index === 0) {
+      await expect
+        .poll(() =>
+          backdrop
+            .locator(".home-backdrop__layer.is-active")
+            .evaluate((node) => getComputedStyle(node).transitionDuration)
+        )
+        .toContain("2.2s");
+    }
+  }
 });
 
 test("channel page uses an immersive layout in mobile landscape", async ({

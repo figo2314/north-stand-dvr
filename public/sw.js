@@ -1,4 +1,4 @@
-const CACHE_NAME = "north-stand-shell-v2";
+const CACHE_NAME = "north-stand-shell-v8";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -10,7 +10,17 @@ const APP_SHELL = [
   "/channels.html",
   "/channels.css",
   "/channels.js",
+  "/music.js",
   "/football.html",
+  "/audio/the-angel-north-london-forever.m4a",
+  "/audio/north-london-forever-2.mp3",
+  "/images/home-arsenal-trophy.webp",
+  "/images/home-arsenal-champions-poster.webp",
+  "/images/home-arsenal-champions-squad.webp",
+  "/images/home-arsenal-ribbon-trophy.webp",
+  "/images/home-arsenal-confetti-celebration.webp",
+  "/images/home-arsenal-red-confetti.webp",
+  "/images/home-arsenal-legends-trophy.webp",
   "/pwa.js",
   "/site.webmanifest",
   "/icon.svg",

@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  const HOME_BACKDROP_INTERVAL_MS = 9_000;
+  const HOME_MUSIC_STATE_KEY = "north-stand-music-state";
+
   const app = {
     data: null,
     view: "home",
@@ -18,7 +21,19 @@
     logQuery: "",
     m3uChannels: [],
     channelSources: [],
-    tvConfig: null
+    tvConfig: null,
+    homeMusicReady: false,
+    homeMusicShouldPlay: false,
+    homeMusicUserPaused: false,
+    homeMusicAutoplayArmed: false,
+    homeMusicAutoplayScheduled: false,
+    homeMusicPlaylist: [],
+    homeMusicIndex: 0,
+    homeMusicPlayTask: null,
+    homeMusicRetryTimer: null,
+    homeMusicUnmuteTimer: null,
+    homeMusicLastSavedSecond: -1,
+    homeBackdropIndex: 0
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -72,6 +87,402 @@
     region.append(item);
     refreshIcons();
     window.setTimeout(() => item.remove(), 4200);
+  }
+
+  function readHomeMusicState() {
+    try {
+      const state = JSON.parse(
+        window.localStorage.getItem(HOME_MUSIC_STATE_KEY) || "null"
+      );
+      return state && typeof state === "object" ? state : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveHomeMusicState() {
+    const audio = $("[data-home-music]");
+    if (!audio || !app.homeMusicPlaylist.length) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        HOME_MUSIC_STATE_KEY,
+        JSON.stringify({
+          playlist: app.homeMusicPlaylist,
+          index: app.homeMusicIndex,
+          currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+          playing: app.homeMusicShouldPlay,
+          userPaused: app.homeMusicUserPaused,
+          updatedAt: Date.now()
+        })
+      );
+    } catch {
+      // Playback continues even when browser storage is unavailable.
+    }
+  }
+
+  function restoreHomeMusicPosition(audio, time) {
+    const resumeTime = Math.max(0, Number(time) || 0);
+    if (!resumeTime) {
+      return;
+    }
+    const restore = () => {
+      try {
+        audio.currentTime = Math.min(
+          resumeTime,
+          Number.isFinite(audio.duration) ? Math.max(0, audio.duration - 0.5) : resumeTime
+        );
+      } catch {
+        // Some formats reject seeks until enough media is buffered.
+      }
+    };
+    if (audio.readyState >= 1) {
+      restore();
+    } else {
+      audio.addEventListener("loadedmetadata", restore, { once: true });
+    }
+  }
+
+  function updateHomeMusicMetadata() {
+    if (
+      !app.homeMusicReady ||
+      !("mediaSession" in navigator) ||
+      typeof window.MediaMetadata !== "function"
+    ) {
+      return;
+    }
+
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: "The Angel (North London Forever)",
+      artist: "Louis Dunford",
+      album: "The Popham EP"
+    });
+  }
+
+  function updateHomeMusicUI() {
+    const audio = $("[data-home-music]");
+    const buttons = $$("[data-music-toggle]");
+    const labels = $$("[data-music-label]");
+    if (!audio || !buttons.length || !labels.length) {
+      return;
+    }
+
+    const playing = app.homeMusicReady && !audio.paused && !audio.ended;
+    const ready = app.homeMusicReady;
+    const accessibleLabel = playing ? "暂停队歌" : "播放队歌";
+    for (const button of buttons) {
+      button.classList.toggle("is-playing", playing);
+      button.setAttribute("aria-pressed", String(playing));
+      button.dataset.musicState = !ready
+        ? "loading"
+        : playing
+          ? "playing"
+          : "ready";
+      button.setAttribute("aria-label", accessibleLabel);
+      button.title = accessibleLabel;
+    }
+    for (const label of labels) {
+      label.textContent = accessibleLabel;
+    }
+  }
+
+  function handleHomeMusicPlay() {
+    app.homeMusicShouldPlay = true;
+    app.homeMusicUserPaused = false;
+    updateHomeMusicUI();
+    scheduleHomeMusicUnmute();
+  }
+
+  function pauseHomeMusic() {
+    clearHomeMusicRetry();
+    clearHomeMusicUnmute();
+    const audio = $("[data-home-music]");
+    if (audio && !audio.paused) {
+      audio.pause();
+    }
+  }
+
+  function clearHomeMusicUnmute() {
+    if (app.homeMusicUnmuteTimer) {
+      window.clearTimeout(app.homeMusicUnmuteTimer);
+      app.homeMusicUnmuteTimer = null;
+    }
+  }
+
+  function scheduleHomeMusicUnmute() {
+    const audio = $("[data-home-music]");
+    clearHomeMusicUnmute();
+    if (!audio?.muted) {
+      return;
+    }
+    app.homeMusicUnmuteTimer = window.setTimeout(() => {
+      app.homeMusicUnmuteTimer = null;
+      if (!audio.paused && !app.homeMusicUserPaused) {
+        audio.muted = false;
+      }
+    }, 520);
+  }
+
+  function clearHomeMusicRetry() {
+    if (app.homeMusicRetryTimer) {
+      window.clearTimeout(app.homeMusicRetryTimer);
+      app.homeMusicRetryTimer = null;
+    }
+  }
+
+  function clearHomeMusicAutoplayWait() {
+    if (!app.homeMusicAutoplayArmed) {
+      return;
+    }
+    document.removeEventListener("pointerdown", startHomeMusicFromGesture, true);
+    document.removeEventListener("keydown", startHomeMusicFromGesture, true);
+    document.removeEventListener("touchstart", startHomeMusicFromGesture, true);
+    app.homeMusicAutoplayArmed = false;
+  }
+
+  function startHomeMusicFromGesture(event) {
+    if (event.target.closest?.("[data-music-toggle]")) {
+      clearHomeMusicAutoplayWait();
+      return;
+    }
+    const audio = $("[data-home-music]");
+    if (audio) {
+      audio.muted = false;
+    }
+    playHomeMusic();
+  }
+
+  function armHomeMusicAutoplay() {
+    if (app.homeMusicAutoplayArmed || app.homeMusicUserPaused) {
+      return;
+    }
+    app.homeMusicAutoplayArmed = true;
+    document.addEventListener("pointerdown", startHomeMusicFromGesture, true);
+    document.addEventListener("keydown", startHomeMusicFromGesture, true);
+    document.addEventListener("touchstart", startHomeMusicFromGesture, true);
+  }
+
+  async function startMutedHomeMusic({ announce = false } = {}) {
+    const audio = $("[data-home-music]");
+    const player = $("[data-player-layer]");
+    if (
+      !app.homeMusicReady ||
+      !audio?.src ||
+      app.homeMusicUserPaused ||
+      document.visibilityState === "hidden" ||
+      (player && !player.hidden)
+    ) {
+      return false;
+    }
+    if (!audio.paused) {
+      app.homeMusicShouldPlay = true;
+      clearHomeMusicAutoplayWait();
+      return true;
+    }
+
+    audio.muted = true;
+    try {
+      await audio.play();
+      app.homeMusicShouldPlay = true;
+      app.homeMusicUserPaused = false;
+      clearHomeMusicAutoplayWait();
+      scheduleHomeMusicUnmute();
+      saveHomeMusicState();
+      return true;
+    } catch {
+      audio.muted = false;
+      armHomeMusicAutoplay();
+      if (announce) {
+        toast("浏览器阻止了自动播放", "在页面任意位置点一下即可开始队歌。", "error");
+      }
+      updateHomeMusicUI();
+      return false;
+    }
+  }
+
+  function playHomeMusic(options = {}) {
+    if (app.homeMusicPlayTask) {
+      return app.homeMusicPlayTask;
+    }
+
+    const task = playHomeMusicNow(options);
+    app.homeMusicPlayTask = task;
+    task.finally(() => {
+      if (app.homeMusicPlayTask === task) {
+        app.homeMusicPlayTask = null;
+      }
+    });
+    return task;
+  }
+
+  async function playHomeMusicNow({ announce = false } = {}) {
+    const audio = $("[data-home-music]");
+    if (!app.homeMusicReady || !audio?.src) {
+      return false;
+    }
+    if (!audio.paused) {
+      app.homeMusicShouldPlay = true;
+      clearHomeMusicAutoplayWait();
+      return true;
+    }
+
+    clearHomeMusicRetry();
+    clearHomeMusicUnmute();
+    audio.muted = false;
+    try {
+      await audio.play();
+      app.homeMusicShouldPlay = true;
+      app.homeMusicUserPaused = false;
+      clearHomeMusicAutoplayWait();
+      saveHomeMusicState();
+      return true;
+    } catch {
+      app.homeMusicRetryTimer = window.setTimeout(() => {
+        app.homeMusicRetryTimer = null;
+        startMutedHomeMusic({ announce });
+      }, 950);
+      updateHomeMusicUI();
+      return false;
+    }
+  }
+
+  function setHomeMusicTrack(index, { autoplay = false } = {}) {
+    const audio = $("[data-home-music]");
+    if (!audio || !app.homeMusicPlaylist.length) {
+      return;
+    }
+
+    const count = app.homeMusicPlaylist.length;
+    app.homeMusicIndex = ((index % count) + count) % count;
+    const nextSource = app.homeMusicPlaylist[app.homeMusicIndex];
+    audio.dataset.musicIndex = String(app.homeMusicIndex);
+    if (audio.getAttribute("src") !== nextSource) {
+      audio.src = nextSource;
+      audio.load();
+    }
+    updateHomeMusicUI();
+    updateHomeMusicMetadata();
+    if (autoplay) {
+      playHomeMusic();
+    }
+  }
+
+  function advanceHomeMusic() {
+    if (app.homeMusicUserPaused) {
+      updateHomeMusicUI();
+      return;
+    }
+    setHomeMusicTrack(app.homeMusicIndex + 1, { autoplay: true });
+    saveHomeMusicState();
+  }
+
+  function scheduleHomeMusicAutoplay() {
+    if (app.homeMusicAutoplayScheduled) {
+      return;
+    }
+    app.homeMusicAutoplayScheduled = true;
+
+    const start = () => {
+      window.setTimeout(() => {
+        if (!app.homeMusicUserPaused) {
+          startMutedHomeMusic();
+        }
+      }, 80);
+    };
+
+    if (document.readyState === "complete") {
+      start();
+    } else {
+      window.addEventListener("load", start, { once: true });
+    }
+  }
+
+  function initializeHomeMusic() {
+    const audio = $("[data-home-music]");
+    if (!audio) {
+      return;
+    }
+    try {
+      app.homeMusicPlaylist = JSON.parse(
+        audio.dataset.homeMusicPlaylist || "[]"
+      ).filter((source) => typeof source === "string" && source);
+    } catch {
+      app.homeMusicPlaylist = [];
+    }
+    if (!app.homeMusicPlaylist.length && audio.getAttribute("src")) {
+      app.homeMusicPlaylist = [audio.getAttribute("src")];
+    }
+    if (!app.homeMusicPlaylist.length) {
+      return;
+    }
+
+    const saved = readHomeMusicState();
+    const savedIndex = Number(saved?.index);
+    app.homeMusicIndex = Number.isInteger(savedIndex) ? savedIndex : 0;
+    app.homeMusicUserPaused = Boolean(saved?.userPaused);
+    app.homeMusicShouldPlay = Boolean(saved?.playing && !saved?.userPaused);
+
+    audio.volume = 0.62;
+    app.homeMusicReady = true;
+    setHomeMusicTrack(app.homeMusicIndex);
+    restoreHomeMusicPosition(audio, saved?.currentTime);
+    if (!audio.paused) {
+      handleHomeMusicPlay();
+    } else if (!app.homeMusicUserPaused && (!saved || saved.playing !== false)) {
+      scheduleHomeMusicAutoplay();
+    }
+  }
+
+  async function toggleHomeMusic() {
+    const audio = $("[data-home-music]");
+    if (!app.homeMusicReady || !audio?.src) {
+      toast("队歌资源不可用", "请检查音频文件是否已随项目发布。", "error");
+      return;
+    }
+
+    if (!audio.paused) {
+      app.homeMusicUserPaused = true;
+      app.homeMusicShouldPlay = false;
+      clearHomeMusicAutoplayWait();
+      clearHomeMusicUnmute();
+      audio.pause();
+      saveHomeMusicState();
+      return;
+    }
+
+    app.homeMusicUserPaused = false;
+    await playHomeMusic({ announce: true });
+  }
+
+  function initializeHomeBackdrop() {
+    const backdrop = $("[data-home-backdrop]");
+    const layers = $$("[data-home-backdrop-layer]", backdrop || document);
+    if (!backdrop || layers.length < 2) {
+      return;
+    }
+
+    backdrop.dataset.backdropIndex = "0";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    window.setInterval(() => {
+      if (
+        app.view !== "home" ||
+        document.visibilityState === "hidden" ||
+        document.body.classList.contains("is-home-library")
+      ) {
+        return;
+      }
+
+      const current = app.homeBackdropIndex;
+      const next = (current + 1) % layers.length;
+      layers[current].classList.remove("is-active");
+      layers[next].classList.add("is-active");
+      app.homeBackdropIndex = next;
+      backdrop.dataset.backdropIndex = String(next);
+    }, HOME_BACKDROP_INTERVAL_MS);
   }
 
   function formatBytes(bytes) {
@@ -1287,6 +1698,7 @@
 
     app.activeRecording = recording;
     app.lastSavedProgress = recording.watchedSeconds || 0;
+    pauseHomeMusic();
     const layer = $("[data-player-layer]");
     const video = $("[data-video]");
     const message = $("[data-player-message]");
@@ -1346,6 +1758,9 @@
     app.activeRecording = null;
     window.clearInterval(app.progressTimer);
     app.progressTimer = null;
+    if (app.view === "home" && !app.homeMusicUserPaused) {
+      playHomeMusic();
+    }
   }
 
   function updateRevealButton(recording) {
@@ -1712,6 +2127,11 @@
         return;
       }
 
+      if (event.target.closest("[data-music-toggle]")) {
+        toggleHomeMusic();
+        return;
+      }
+
       const viewButton = event.target.closest("[data-view]");
       if (viewButton) {
         navigate(viewButton.dataset.view);
@@ -2034,6 +2454,32 @@
       $("[data-preview-image]").removeAttribute("src");
     });
 
+    const homeMusic = $("[data-home-music]");
+    homeMusic.addEventListener("play", () => {
+      handleHomeMusicPlay();
+      saveHomeMusicState();
+    });
+    homeMusic.addEventListener("pause", () => {
+      updateHomeMusicUI();
+      if (app.homeMusicUserPaused) {
+        saveHomeMusicState();
+      }
+    });
+    homeMusic.addEventListener("timeupdate", () => {
+      const second = Math.floor(homeMusic.currentTime);
+      if (second % 5 === 0 && second !== app.homeMusicLastSavedSecond) {
+        app.homeMusicLastSavedSecond = second;
+        saveHomeMusicState();
+      }
+    });
+    homeMusic.addEventListener("ended", advanceHomeMusic);
+    homeMusic.addEventListener("error", () => {
+      app.homeMusicReady = false;
+      updateHomeMusicUI();
+      toast("队歌无法播放", "请检查发布包中的音频文件。", "error");
+    });
+    window.addEventListener("pagehide", saveHomeMusicState);
+
     const video = $("[data-video]");
     video.addEventListener("loadedmetadata", updatePlayerUI);
     video.addEventListener("timeupdate", () => {
@@ -2113,6 +2559,8 @@
   async function boot() {
     bindEvents();
     navigate(window.location.hash.slice(1) || "home");
+    initializeHomeBackdrop();
+    initializeHomeMusic();
     await Promise.all([loadState(), loadChannelSources(), loadTvConfig()]);
     refreshIcons();
   }
