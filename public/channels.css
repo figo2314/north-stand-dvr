@@ -678,6 +678,16 @@
   white-space: nowrap;
 }
 
+.channel-pin {
+  padding: 4px 7px;
+  color: white;
+  background: var(--brand);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .channel-quality-tag.is-checking {
   color: var(--ink-muted);
   background: var(--surface-muted);

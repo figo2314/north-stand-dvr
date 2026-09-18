@@ -15,6 +15,7 @@
     previewTimer: null,
     logs: [],
     logLevel: "",
+    logQuery: "",
     m3uChannels: [],
     channelSources: [],
     tvConfig: null
@@ -646,13 +647,52 @@
     return labels[event] || event || "运行事件";
   }
 
+  function filteredLogs() {
+    const query = app.logQuery.trim().toLocaleLowerCase("zh-CN");
+    return app.logs.filter((entry) => {
+      if (app.logLevel && entry.level !== app.logLevel) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return `${entry.event} ${entry.message} ${entry.fixture || ""} ${
+        entry.competition || ""
+      } ${entry.path || ""}`
+        .toLocaleLowerCase("zh-CN")
+        .includes(query);
+    });
+  }
+
   function renderLogs() {
     const list = $("[data-log-list]");
-    const entries = app.logs.filter(
-      (entry) => !app.logLevel || entry.level === app.logLevel
+    const entries = filteredLogs();
+    const counts = app.logs.reduce(
+      (result, entry) => {
+        result.all += 1;
+        if (entry.level === "error") result.error += 1;
+        else if (entry.level === "warning") result.warning += 1;
+        else result.info += 1;
+        return result;
+      },
+      { all: 0, error: 0, warning: 0, info: 0 }
     );
+    for (const [level, count] of Object.entries(counts)) {
+      const node = document.querySelector(`[data-log-count="${level}"]`);
+      if (node) {
+        node.textContent = `${
+          level === "all"
+            ? "全部"
+            : level === "error"
+              ? "错误"
+              : level === "warning"
+                ? "警告"
+                : "信息"
+        } ${count}`;
+      }
+    }
     $("[data-log-summary]").textContent = entries.length
-      ? `共显示 ${entries.length} 条记录，最新的在前。`
+      ? `显示 ${entries.length} / ${app.logs.length} 条记录，最新的在前。`
       : "当前筛选范围内没有日志。";
 
     if (!entries.length) {
@@ -731,6 +771,32 @@
     app.logs = [];
     renderLogs();
     toast("运行日志已清空");
+  }
+
+  function copyDiagnostics() {
+    const entries = filteredLogs();
+    const text = entries
+      .map((entry) => {
+        const context = [
+          entry.fixture,
+          entry.competition,
+          entry.path,
+          entry.status ? `HTTP ${entry.status}` : ""
+        ]
+          .filter(Boolean)
+          .join(" | ");
+        return [
+          entry.timestamp,
+          String(entry.level || "info").toUpperCase(),
+          entry.event,
+          entry.message,
+          context
+        ]
+          .filter(Boolean)
+          .join(" | ");
+      })
+      .join("\n");
+    copyText(text, "诊断信息");
   }
 
   function populateSettings() {
@@ -1741,6 +1807,11 @@
         return;
       }
 
+      if (event.target.closest("[data-copy-logs]")) {
+        copyDiagnostics();
+        return;
+      }
+
       if (event.target.closest("[data-clear-logs]")) {
         clearLogs().catch((error) => toast("无法清空日志", error.message, "error"));
         return;
@@ -1928,6 +1999,10 @@
     $("[data-mask-form]").addEventListener("input", updateMaskDraftPreview);
     $("[data-channel-search]").addEventListener("input", (event) => {
       renderM3uResults(event.target.value);
+    });
+    $("[data-log-search]").addEventListener("input", (event) => {
+      app.logQuery = event.target.value;
+      renderLogs();
     });
     $("[data-log-level]").addEventListener("change", (event) => {
       app.logLevel = event.target.value;

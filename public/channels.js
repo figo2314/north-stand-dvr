@@ -74,6 +74,7 @@
     query: "",
     activeChannel: null,
     autoSelecting: false,
+    footballAttempts: new Set(),
     hls: null,
     statsTimer: null,
     fallbackTimer: null,
@@ -87,6 +88,7 @@
     channelWindow: null,
     hudTimer: null,
     controlsTimer: null,
+    playbackMode: "live",
     gesture: null,
     lastTapAt: 0,
     settings: null,
@@ -171,6 +173,47 @@
     );
   }
 
+  function isReplayChannel(channel) {
+    return /全场回放|回放|重播|集锦录像/.test(
+      `${channel.name || ""} ${channel.group || ""}`
+    );
+  }
+
+  function isArsenalChannel(channel) {
+    return /阿森纳|Arsenal/i.test(
+      `${channel.name || ""} ${channel.group || ""}`
+    );
+  }
+
+  function isArsenalHighlight(channel) {
+    return (
+      isArsenalChannel(channel) &&
+      /highlight|集锦|高光/i.test(`${channel.name || ""} ${channel.group || ""}`)
+    );
+  }
+
+  function footballChannelPriority(channel) {
+    if (CHANNEL_SCOPE !== "football") {
+      return 0;
+    }
+    if (isArsenalHighlight(channel)) {
+      return 100;
+    }
+    if (isArsenalChannel(channel)) {
+      return 80;
+    }
+    if (isReplayChannel(channel)) {
+      return 1;
+    }
+    if (String(channel.group).includes("今天")) {
+      return 5;
+    }
+    if (String(channel.group).includes("明天")) {
+      return 4;
+    }
+    return 3;
+  }
+
   function guideForChannel(channel) {
     return (
       app.epg[channel.tvgId] ||
@@ -192,12 +235,13 @@
   function channelScore(channel) {
     const health = freshQuality(channel);
     if (!health) {
-      return 0;
+      return footballChannelPriority(channel) * 500;
     }
     if (health.playable === false || health.quality === "暂不可用") {
-      return -10_000;
+      return footballChannelPriority(channel) * 500 - 10_000;
     }
     return (
+      footballChannelPriority(channel) * 500 +
       2_000 +
       Math.min(600, (Number(health.height) || 0) / 2) -
       (Number(health.latencyMs) || 0) / 20 +
@@ -362,6 +406,38 @@
   }
 
   function preferredAutoChannel() {
+    if (CHANNEL_SCOPE === "football") {
+      const liveChannels = app.channels.filter(
+        (channel) => !isReplayChannel(channel)
+      );
+      const arsenalHighlight = sortChannels(app.channels).find(
+        (channel) =>
+          isArsenalHighlight(channel) &&
+          qualityStateForChannel(channel).tone !== "offline"
+      );
+      if (arsenalHighlight) {
+        return arsenalHighlight;
+      }
+      const arsenalChannel = sortChannels(liveChannels).find(
+        (channel) =>
+          isArsenalChannel(channel) &&
+          qualityStateForChannel(channel).tone !== "offline"
+      );
+      if (arsenalChannel) {
+        return arsenalChannel;
+      }
+      const playableLive = sortChannels(liveChannels).find((channel) => {
+        const cached = freshQuality(channel);
+        return cached && cached.playable !== false;
+      });
+      if (playableLive) {
+        return playableLive;
+      }
+      return (
+        sortChannels(liveChannels).find((channel) => !freshQuality(channel)) ||
+        null
+      );
+    }
     const jade = preferredJadeChannel();
     if (jade) {
       return jade;
@@ -640,6 +716,7 @@
   function channelRowMarkup(channel) {
     const favorite = isFavorite(channel);
     const probe = qualityStateForChannel(channel);
+    const arsenalHighlight = isArsenalHighlight(channel);
     const guide = guideForChannel(channel);
     const currentProgram = guide?.current || null;
     const progress = programProgress(currentProgram);
@@ -689,6 +766,11 @@
             }
           </span>
           <span class="channel-row__tail">
+            ${
+              arsenalHighlight
+                ? `<span class="channel-pin" title="阿森纳 HIGHLIGHT">ARSENAL</span>`
+                : ""
+            }
             <span
               class="channel-quality-tag is-${probe.tone}"
               data-quality-for="${escapeHtml(qualityKey(channel))}"
@@ -1278,9 +1360,18 @@
     }
   }
 
-  function preferredLevel(levels) {
+  function preferredLevel(levels, mode = app.playbackMode) {
     const mobile = isMobilePlayback();
-    const maxHeight = mobile ? 720 : 1080;
+    const maxHeight =
+      mode === "replay"
+        ? mobile
+          ? 1080
+          : 2160
+        : mode === "football-live"
+          ? 1080
+          : mobile
+            ? 720
+            : 1080;
     for (let index = levels.length - 1; index >= 0; index -= 1) {
       const level = levels[index];
       if (
@@ -1317,6 +1408,35 @@
   }
 
   function playFallbackChannel(channel, depth) {
+    if (
+      CHANNEL_SCOPE === "football" &&
+      !isReplayChannel(channel)
+    ) {
+      const nextLive =
+        app.footballAttempts.size < 10
+          ? sortChannels(app.channels).find(
+              (item) =>
+                !isReplayChannel(item) &&
+                !app.footballAttempts.has(item.id) &&
+                qualityStateForChannel(item).tone !== "offline"
+            )
+          : null;
+      if (nextLive) {
+        playChannel(nextLive.id, {
+          autoFallback: true,
+          autoSelect: true,
+          depth: depth + 1
+        });
+        return;
+      }
+      const message = $("[data-channel-message]");
+      message.hidden = false;
+      message.querySelector("strong").textContent = "当前直播线路不可用";
+      message.querySelector("p").textContent =
+        "已尝试可用直播线路，请从列表选择备用线路或手动选择回放。";
+      $("[data-channel-retry]").hidden = false;
+      return;
+    }
     if (
       isMobilePlayback() &&
       DEFAULT_CHANNEL_PATTERN.test(channel.name) &&
@@ -1375,6 +1495,9 @@
     if (isMobilePlayback() && DEFAULT_CHANNEL_PATTERN.test(channel.name)) {
       app.jadeAttempts.add(channel.id);
     }
+    if (CHANNEL_SCOPE === "football" && !isReplayChannel(channel)) {
+      app.footballAttempts.add(channel.id);
+    }
     if (!autoSelect) {
       recordRecent(channel);
       renderGroups();
@@ -1402,28 +1525,72 @@
 
     if (window.Hls?.isSupported()) {
       const mobile = isMobilePlayback();
-      const hls = new window.Hls({
+      const football = CHANNEL_SCOPE === "football";
+      const replay = football && isReplayChannel(channel);
+      app.playbackMode = replay
+        ? "replay"
+        : football
+          ? "football-live"
+          : "live";
+      const commonConfig = {
         enableWorker: true,
-        lowLatencyMode: true,
         startLevel: -1,
         capLevelToPlayerSize: true,
         capLevelOnFPSDrop: true,
-        liveSyncDurationCount: mobile ? 2 : 3,
-        maxBufferLength: mobile ? 12 : 30,
-        maxMaxBufferLength: mobile ? 20 : 60,
-        backBufferLength: mobile ? 8 : 30,
-        maxLiveSyncPlaybackRate: mobile ? 1.05 : 1.5,
-        maxStarvationDelay: mobile ? 4 : 8,
-        abrEwmaDefaultEstimate: mobile ? 2_000_000 : 8_000_000,
-        abrBandWidthFactor: mobile ? 0.8 : 0.95,
-        abrBandWidthUpFactor: mobile ? 0.7 : 0.75
-      });
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 6,
+        fragLoadingMaxRetry: 6
+      };
+      const hlsConfig = replay
+        ? {
+            ...commonConfig,
+            lowLatencyMode: false,
+            maxBufferLength: mobile ? 30 : 60,
+            maxMaxBufferLength: mobile ? 60 : 120,
+            backBufferLength: mobile ? 30 : 60,
+            maxStarvationDelay: 10,
+            abrEwmaDefaultEstimate: mobile ? 6_000_000 : 12_000_000,
+            abrBandWidthFactor: mobile ? 0.88 : 0.95,
+            abrBandWidthUpFactor: mobile ? 0.78 : 0.82,
+            maxFragLookUpTolerance: 0.25
+          }
+        : football
+          ? {
+              ...commonConfig,
+              lowLatencyMode: true,
+              liveSyncDurationCount: mobile ? 3 : 3,
+              maxBufferLength: mobile ? 20 : 36,
+              maxMaxBufferLength: mobile ? 36 : 72,
+              backBufferLength: mobile ? 12 : 30,
+              maxLiveSyncPlaybackRate: mobile ? 1.05 : 1.12,
+              maxStarvationDelay: mobile ? 6 : 8,
+              abrEwmaDefaultEstimate: mobile ? 6_000_000 : 8_000_000,
+              abrBandWidthFactor: mobile ? 0.86 : 0.92,
+              abrBandWidthUpFactor: mobile ? 0.8 : 0.8
+            }
+          : {
+              ...commonConfig,
+              lowLatencyMode: true,
+              liveSyncDurationCount: mobile ? 2 : 3,
+              maxBufferLength: mobile ? 12 : 30,
+              maxMaxBufferLength: mobile ? 20 : 60,
+              backBufferLength: mobile ? 8 : 30,
+              maxLiveSyncPlaybackRate: mobile ? 1.05 : 1.5,
+              maxStarvationDelay: mobile ? 4 : 8,
+              abrEwmaDefaultEstimate: mobile ? 2_000_000 : 8_000_000,
+              abrBandWidthFactor: mobile ? 0.8 : 0.95,
+              abrBandWidthUpFactor: mobile ? 0.7 : 0.75
+            };
+      const hls = new window.Hls(hlsConfig);
       app.hls = hls;
       hls.loadSource(source);
       hls.attachMedia(video);
       hls.on(window.Hls.Events.MANIFEST_PARSED, (_, data) => {
         renderQuality(data.levels || []);
-        const preferredIndex = preferredLevel(data.levels || []);
+        const preferredIndex = preferredLevel(
+          data.levels || [],
+          app.playbackMode
+        );
         const preferredLevelInfo = data.levels?.[preferredIndex] || null;
         const maxHeight = Math.max(
           0,
@@ -1717,6 +1884,7 @@
         : !channel.group.startsWith("体育-")
     );
     app.jadeAttempts.clear();
+    app.footballAttempts.clear();
     app.qualityPrompted.clear();
     app.epgUrls = payload.epgUrls || [];
     app.sourceLabels = payload.sources
@@ -1835,6 +2003,7 @@
     const channelButton = event.target.closest("[data-channel-id]");
     if (channelButton) {
       app.jadeAttempts.clear();
+      app.footballAttempts.clear();
       app.qualityPrompted.clear();
       playChannel(channelButton.dataset.channelId, { autoFallback: true });
       return;
@@ -1950,7 +2119,10 @@
     }
     const level = Number(event.target.value);
     if (level < 0) {
-      app.hls.autoLevelCapping = preferredLevel(app.hls.levels);
+      app.hls.autoLevelCapping = preferredLevel(
+        app.hls.levels,
+        app.playbackMode
+      );
       app.hls.currentLevel = -1;
     } else {
       app.hls.autoLevelCapping = -1;

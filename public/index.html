@@ -355,6 +355,10 @@
                 </p>
               </div>
               <div class="header-actions">
+                <button class="button button--secondary" type="button" data-copy-logs>
+                  <i data-lucide="copy"></i>
+                  复制诊断
+                </button>
                 <button class="button button--secondary" type="button" data-refresh-logs>
                   <i data-lucide="refresh-cw"></i>
                   刷新日志
@@ -372,15 +376,36 @@
                   <h2 id="runtime-log-title">运行日志</h2>
                   <p data-log-summary>正在读取最近的运行记录…</p>
                 </div>
-                <label class="log-filter">
-                  <span>级别</span>
-                  <select data-log-level>
-                    <option value="">全部</option>
-                    <option value="info">信息</option>
-                    <option value="warning">警告</option>
-                    <option value="error">错误</option>
-                  </select>
-                </label>
+                <div class="log-tools">
+                  <label class="log-search">
+                    <i data-lucide="search"></i>
+                    <input
+                      type="search"
+                      placeholder="搜索赛事、错误或路径"
+                      autocomplete="off"
+                      data-log-search
+                    />
+                  </label>
+                  <label class="log-filter">
+                    <span>级别</span>
+                    <select data-log-level>
+                      <option value="">全部</option>
+                      <option value="info">信息</option>
+                      <option value="warning">警告</option>
+                      <option value="error">错误</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="log-stat-strip">
+                <span data-log-count="all">全部 0</span>
+                <span data-log-count="error">错误 0</span>
+                <span data-log-count="warning">警告 0</span>
+                <span data-log-count="info">信息 0</span>
+                <span class="log-live-state">
+                  <i data-lucide="radio"></i>
+                  每 3 秒自动刷新
+                </span>
               </div>
               <div class="runtime-log-list" data-log-list></div>
             </section>

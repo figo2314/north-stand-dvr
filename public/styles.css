@@ -1071,6 +1071,40 @@ main {
   font-weight: 700;
 }
 
+.log-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.log-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.log-search svg {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.log-search input {
+  width: 210px;
+  min-height: 36px;
+  padding: 0 10px 0 31px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
 .log-filter select {
   min-height: 36px;
   padding: 0 30px 0 10px;
@@ -1079,6 +1113,48 @@ main {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   font: inherit;
+}
+
+.log-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.log-stat-strip > span {
+  padding: 5px 8px;
+  color: var(--ink-muted);
+  background: var(--surface-muted);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 720;
+}
+
+.log-stat-strip [data-log-count="error"] {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.log-stat-strip [data-log-count="warning"] {
+  color: oklch(0.44 0.1 70);
+  background: var(--amber-soft);
+}
+
+.log-stat-strip .log-live-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.log-live-state svg {
+  width: 13px;
+  height: 13px;
 }
 
 .runtime-log-list {
@@ -1093,6 +1169,14 @@ main {
   min-height: 82px;
   padding: 15px 20px;
   border-top: 1px solid var(--line);
+}
+
+.runtime-log.is-warning {
+  background: oklch(0.984 0.018 82 / 0.48);
+}
+
+.runtime-log.is-error {
+  background: oklch(0.98 0.02 27 / 0.54);
 }
 
 .runtime-log__level {
@@ -3378,6 +3462,21 @@ main {
   .log-filter {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .log-tools,
+  .log-search,
+  .log-search input {
+    width: 100%;
+  }
+
+  .log-stat-strip {
+    padding-inline: 16px;
+  }
+
+  .log-stat-strip .log-live-state {
+    width: 100%;
+    margin-left: 0;
   }
 
   .settings-group {

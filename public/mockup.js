@@ -244,6 +244,17 @@
     select.value = app.league;
   }
 
+  function matchPriority(match) {
+    const text = `${match.name} ${match.home} ${match.away} ${match.feed}`;
+    if (/阿森纳|Arsenal/i.test(text) && /highlight|集锦|高光/i.test(text)) {
+      return 100;
+    }
+    if (/阿森纳|Arsenal/i.test(text)) {
+      return 80;
+    }
+    return 0;
+  }
+
   function renderMatches() {
     const list = $("[data-match-list]");
     const order = { live: 0, upcoming: 1, ended: 2 };
@@ -262,6 +273,10 @@
           .includes(query);
       })
       .sort((a, b) => {
+        const priorityDiff = matchPriority(b) - matchPriority(a);
+        if (priorityDiff) {
+          return priorityDiff;
+        }
         const statusDiff = order[a.status] - order[b.status];
         return statusDiff || a.kickoffAt - b.kickoffAt;
       });
@@ -330,6 +345,11 @@
             </div>
             <div class="radar-match__main">
               <div class="radar-match__league">
+                ${
+                  matchPriority(match) >= 100
+                    ? '<span class="radar-pin">ARSENAL HIGHLIGHT</span>'
+                    : ""
+                }
                 <span>${escapeHtml(match.league)}</span>
                 <span aria-hidden="true">·</span>
                 <span>${escapeHtml(statusCopy(match.status))}</span>

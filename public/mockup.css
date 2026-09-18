@@ -357,6 +357,15 @@
   font-weight: 700;
 }
 
+.radar-pin {
+  padding: 3px 6px;
+  color: white;
+  background: var(--brand);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
 .radar-match__teams {
   display: flex;
   align-items: center;

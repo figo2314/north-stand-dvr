@@ -73,13 +73,16 @@ docker compose -f compose.yaml -f compose.vm.yaml up -d
 
 该配置通过 `deploy/ffmpeg-host.sh` 调用主机 FFmpeg，并只读挂载所需的动态库。适用于 Ubuntu 24.04 等 glibc 2.39 主机。
 
-### 多用户访问控制
+### 访问控制
 
-VM 部署可以通过 `.env` 启用 HTTP Basic Auth，支持多个用户：
+VM 部署默认不启用 HTTP Basic Auth，打开网页和 Apple TV 订阅都不需要登录。代码仍保留可选认证能力；如果需要重新启用，可以新增一个 Compose override：
 
-```bash
-APP_BASIC_USERS=football:<hash1>,heiwa:<hash2>
-APP_BASIC_REALM=North Stand DVR
+```yaml
+services:
+  north-stand-dvr:
+    environment:
+      APP_BASIC_USERS: football:<hash1>,heiwa:<hash2>
+      APP_BASIC_REALM: North Stand DVR
 ```
 
 生成密码哈希：
@@ -88,7 +91,7 @@ APP_BASIC_REALM=North Stand DVR
 node -e "const {hashPassword}=require('./server/auth'); console.log(hashPassword(process.argv[1], process.argv[2]))" '密码' '用户名'
 ```
 
-`/api/health` 始终允许匿名访问，便于容器健康检查；其余页面和接口都会受到保护。
+启用后 `/api/health` 和只读电视接口仍允许匿名访问，其余页面和接口需要认证。
 
 ## 实际录制
 

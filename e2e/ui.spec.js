@@ -264,6 +264,45 @@ test("radar filters and searches matches", async ({ page }) => {
   await expect(page.locator(".radar-match")).toContainText("巴塞罗那");
 });
 
+test("radar pins Arsenal highlight matches first", async ({ page }) => {
+  await page.route("**/api/state", async (route) => {
+    await route.fulfill({
+      json: {
+        settings: { m3uUrl: "https://example.com/source.m3u" },
+        fixtures: []
+      }
+    });
+  });
+  await page.route("**/api/sources/m3u", async (route) => {
+    await route.fulfill({
+      json: {
+        count: 2,
+        channels: [
+          {
+            id: "normal",
+            name: "英超 曼城VS利物浦 20:00",
+            group: "体育-今天09-19",
+            streamUrl: "https://example.com/normal.m3u8"
+          },
+          {
+            id: "arsenal",
+            name: "英超 阿森纳VS切尔西 HIGHLIGHT 20:30",
+            group: "体育-今天09-19",
+            streamUrl: "https://example.com/arsenal.m3u8"
+          }
+        ]
+      }
+    });
+  });
+  await page.route("**/api/live/proxy*", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto("/mockup.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".radar-match").first()).toContainText("HIGHLIGHT");
+  await expect(page.locator(".radar-pin")).toContainText("ARSENAL HIGHLIGHT");
+});
+
 test("recording progress exposes live preview and recording actions", async ({
   page
 }) => {
@@ -361,6 +400,11 @@ test("runtime logs show recording failures with context", async ({ page }) => {
   await expect(page.locator(".runtime-log")).toContainText("录制失败");
   await expect(page.locator(".runtime-log")).toContainText("SIGSEGV");
   await expect(page.locator(".runtime-log")).toContainText("巴列卡诺 vs 西班牙人");
+  await expect(page.locator('[data-log-count="error"]')).toContainText("错误 1");
+  await page.locator("[data-log-search]").fill("不存在的内容");
+  await expect(page.locator(".runtime-log")).toHaveCount(0);
+  await page.locator("[data-log-search]").fill("SIGSEGV");
+  await expect(page.locator(".runtime-log")).toHaveCount(1);
 });
 
 test("channel page renders non-football groups and searches channels", async ({
@@ -906,10 +950,17 @@ test("football live page only lists football channels", async ({ page }) => {
   await page.route("**/api/channels", async (route) => {
     await route.fulfill({
       json: {
-        count: 3,
-        sources: [{ id: "test", label: "测试源", count: 3, error: null }],
+        count: 4,
+        sources: [{ id: "test", label: "测试源", count: 4, error: null }],
         epgUrls: [],
         channels: [
+          {
+            id: "arsenal-highlight",
+            healthKey: "arsenal-highlight",
+            name: "阿森纳 HIGHLIGHT 英超集锦",
+            group: "体育-今天",
+            streamUrl: "https://example.com/arsenal-highlight.m3u8"
+          },
           {
             id: "football-live",
             healthKey: "football-live",
@@ -947,7 +998,9 @@ test("football live page only lists football channels", async ({ page }) => {
   await page.goto("/football.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-source-state].is-ready")).toBeVisible();
   await expect(page.locator("[data-channel-list]")).toContainText("阿森纳");
+  await expect(page.locator(".channel-pin").first()).toContainText("ARSENAL");
+  await expect(page.locator(".channel-row").first()).toContainText("HIGHLIGHT");
   await expect(page.locator("[data-channel-list]")).toContainText("全场回放");
   await expect(page.locator("[data-channel-list]")).not.toContainText("湖南卫视");
-  await expect(page.locator("[data-channel-title]")).toContainText("英超");
+  await expect(page.locator("[data-channel-title]")).toContainText("HIGHLIGHT");
 });
