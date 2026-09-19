@@ -86,6 +86,19 @@
         </div>
 
         <div class="channel-player-controls">
+          <div class="channel-replay-progress" data-channel-replay-progress hidden>
+            <span data-channel-progress-current>00:00</span>
+            <input
+              type="range"
+              min="0"
+              max="0"
+              step="0.1"
+              value="0"
+              data-channel-seek
+              aria-label="回放进度"
+            />
+            <span data-channel-progress-duration>00:00</span>
+          </div>
           <button class="channel-control" type="button" data-channel-toggle aria-label="播放或暂停">
             <i data-lucide="play"></i>
           </button>

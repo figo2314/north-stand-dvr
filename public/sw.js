@@ -1,4 +1,4 @@
-const CACHE_NAME = "north-stand-shell-v8";
+const CACHE_NAME = "north-stand-shell-v16";
 const APP_SHELL = [
   "/",
   "/index.html",

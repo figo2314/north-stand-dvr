@@ -43,12 +43,14 @@ const {
   stopAll
 } = require("./dvr");
 const { fetchM3u, probeStream, validateHttpUrl } = require("./m3u");
+const { buildAvailableReplays } = require("./replays");
 
 const PORT = Number(process.env.PORT || 4173);
 const HOST =
   process.env.HOST || (process.argv.includes("--lan") ? "0.0.0.0" : "127.0.0.1");
 const ROOT = path.resolve(__dirname, "..");
 const DB_PATH = path.join(ROOT, "data", "db.json");
+const APP_VERSION = require(path.join(ROOT, "package.json")).version;
 const store = new JsonStore(DB_PATH);
 const eventLog = new EventLog(path.join(ROOT, "data", "logs.jsonl"));
 const liveProxy = createLiveProxy();
@@ -225,6 +227,7 @@ async function healthSnapshot() {
   }
 
   return {
+    version: APP_VERSION,
     ffmpeg: {
       available: Boolean(ffmpegPath && fs.existsSync(ffmpegPath)),
       path: ffmpegPath || null
@@ -1100,6 +1103,35 @@ app.get(
       epgUrls: catalog.epgUrls || [],
       cachedAt: new Date(catalog.loadedAt).toISOString()
     });
+  })
+);
+
+app.get(
+  "/api/replays/available",
+  asyncRoute(async (request, response) => {
+    const catalog = await getChannelCatalog({
+      force: request.query.refresh === "1"
+    });
+    const replays = buildAvailableReplays(
+      catalog.channels,
+      store.channelHealth
+    );
+    response.json({ count: replays.length, replays });
+  })
+);
+
+app.get(
+  "/api/replays/:id/stream",
+  asyncRoute(async (request, response) => {
+    const catalog = await getChannelCatalog();
+    const channel = catalog.channels.find(
+      (item) => item.id === request.params.id
+    );
+    if (!channel) {
+      throw notFound("没有找到这个回放线路");
+    }
+    request.liveSourceUrl = channel.streamUrl;
+    return liveProxy(request, response);
   })
 );
 

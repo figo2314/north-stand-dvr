@@ -27,7 +27,6 @@
         </a>
 
         <div class="rail-arsenal-strip" aria-label="Arsenal, North London Forever">
-          <span class="rail-arsenal-mark">A</span>
           <span>
             <strong>ARSENAL</strong>
             <small>NORTH LONDON FOREVER</small>
@@ -100,7 +99,6 @@
             <strong data-display-name>北看台</strong>
           </a>
           <div class="mobile-arsenal-strip" aria-label="Arsenal, North London Forever">
-            <span class="mobile-arsenal-mark">A</span>
             <span>
               <strong>ARSENAL</strong>
               <small>NORTH LONDON FOREVER</small>
@@ -268,6 +266,11 @@
                 </button>
               </div>
             </section>
+
+            <div class="home-version" aria-label="版本信息">
+              <span>北看台</span>
+              <strong>v<span data-app-version>读取中</span></strong>
+            </div>
 
             <section class="overnight-strip" aria-labelledby="overnight-title">
               <div class="strip-icon" aria-hidden="true">
@@ -1134,7 +1137,7 @@
             <span class="spoiler-dot" aria-hidden="true"></span>
             <div>
               <strong data-player-title>比赛录像</strong>
-              <small>比分与赛果已封存</small>
+              <small data-player-subtitle>比分与赛果已封存</small>
             </div>
           </div>
           <button class="button button--player" type="button" data-player-reveal>
@@ -1208,6 +1211,7 @@
 
     <div class="toast-region" data-toast-region aria-live="polite"></div>
     <script src="/vendor/lucide.js"></script>
+    <script src="/vendor/hls.js"></script>
     <script src="/app.js"></script>
     <script src="/pwa.js"></script>
   </body>

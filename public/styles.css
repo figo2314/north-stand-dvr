@@ -633,6 +633,17 @@ main {
   transform: translateY(-2px);
 }
 
+.recording-row.is-channel-replay {
+  border-color: oklch(0.8 0.075 153 / 0.72);
+  background:
+    linear-gradient(110deg, oklch(0.97 0.018 153 / 0.72), transparent 48%),
+    var(--surface);
+}
+
+.recording-row.is-channel-replay:hover {
+  border-color: oklch(0.68 0.12 153 / 0.82);
+}
+
 .recording-visual {
   position: relative;
   height: 130px;
@@ -679,6 +690,11 @@ main {
 .spoiler-tape svg {
   width: 13px;
   height: 13px;
+}
+
+.spoiler-tape.is-live {
+  background: oklch(0.35 0.12 153 / 0.9);
+  border-color: oklch(0.82 0.12 153 / 0.42);
 }
 
 .recording-length {
@@ -754,6 +770,11 @@ main {
   background: var(--brand-soft);
 }
 
+.recording-result.is-live {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
 .recording-result svg {
   width: 14px;
   height: 14px;
@@ -765,6 +786,55 @@ main {
   align-items: stretch;
   gap: 8px;
   width: 120px;
+}
+
+.recording-actions--replay {
+  width: 188px;
+}
+
+.replay-variant-picker {
+  display: grid;
+  gap: 5px;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.replay-variant-picker > span,
+.replay-variant-single {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.replay-variant-picker svg,
+.replay-variant-single svg {
+  width: 14px;
+  height: 14px;
+}
+
+.replay-variant-picker select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 28px 0 9px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.replay-variant-picker select:focus-visible {
+  border-color: var(--brand);
+  outline: 2px solid var(--brand-soft);
+}
+
+.replay-variant-single {
+  min-height: 30px;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .play-button {
@@ -3583,6 +3653,26 @@ main {
   isolation: isolate;
 }
 
+.home-version {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  color: oklch(0.68 0.03 255);
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+
+.home-version strong {
+  color: white;
+  font-weight: 820;
+}
+
+.view[data-view-panel="home"].is-mobile-library .home-version {
+  display: none;
+}
+
 .home-backdrop {
   position: absolute;
   top: -42px;
@@ -3680,33 +3770,9 @@ main {
 }
 
 .rail-arsenal-strip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 9px;
-  align-items: center;
-  margin-top: 18px;
-  padding: 9px 10px;
+  display: block;
+  margin: 17px 4px 0;
   color: white;
-  background: oklch(1 0 0 / 0.065);
-  border: 1px solid oklch(1 0 0 / 0.12);
-  border-left: 3px solid var(--brand);
-  border-radius: 10px;
-  backdrop-filter: blur(16px) saturate(1.2) brightness(0.86);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2) brightness(0.86);
-}
-
-.rail-arsenal-mark {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  color: white;
-  background: oklch(0.53 0.205 27 / 0.78);
-  border: 1px solid oklch(1 0 0 / 0.15);
-  border-radius: 8px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
-  font-weight: 800;
 }
 
 .rail-arsenal-strip strong,
@@ -3718,12 +3784,12 @@ main {
 }
 
 .rail-arsenal-strip strong {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 850;
 }
 
 .rail-arsenal-strip small {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--amber);
   font-size: 0.52rem;
   font-weight: 760;
@@ -3734,34 +3800,8 @@ main {
   min-width: 0;
   flex: 1 1 auto;
   align-items: center;
-  gap: 6px;
   margin: 0 10px;
-  padding: 4px 7px;
   color: white;
-  background: oklch(1 0 0 / 0.065);
-  border: 1px solid oklch(1 0 0 / 0.12);
-  border-left: 2px solid var(--brand);
-  border-radius: 8px;
-  backdrop-filter: blur(14px) saturate(1.2) brightness(0.84);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2) brightness(0.84);
-}
-
-.mobile-arsenal-mark {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  place-items: center;
-  color: white;
-  background: oklch(0.53 0.205 27 / 0.78);
-  border-radius: 6px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 0.76rem;
-  font-weight: 800;
-}
-
-.mobile-arsenal-strip > span:last-child {
-  min-width: 0;
 }
 
 .mobile-arsenal-strip strong,

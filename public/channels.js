@@ -9,7 +9,7 @@
     /足球|英超|西甲|德甲|意甲|法甲|欧冠|欧联|世界杯|欧洲杯|中超|亚冠|世预赛|友谊赛|全场回放/;
   const QUALITY_TTL_MS = 6 * 60 * 60 * 1000;
   const DEFAULT_CHANNEL_PATTERN = /翡翠台/;
-  const CHANNEL_ROW_HEIGHT = 78;
+  const DEFAULT_CHANNEL_ROW_HEIGHT = 78;
   const CHANNEL_OVERSCAN = 8;
   const LEGACY_M3U_SOURCES = [
     {
@@ -89,6 +89,7 @@
     hudTimer: null,
     controlsTimer: null,
     playbackMode: "live",
+    seeking: false,
     gesture: null,
     lastTapAt: 0,
     settings: null,
@@ -103,7 +104,8 @@
     qualityActive: new Set(),
     qualityPreflightKeys: new Set(),
     qualityPreflightTotal: 0,
-    qualityObserver: null
+    qualityObserver: null,
+    channelRowHeight: DEFAULT_CHANNEL_ROW_HEIGHT
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -119,6 +121,17 @@
 
   function refreshIcons() {
     window.lucide?.createIcons({ attrs: { "aria-hidden": "true" } });
+  }
+
+  function currentChannelRowHeight() {
+    const raw = window
+      .getComputedStyle(document.body || document.documentElement)
+      .getPropertyValue("--channel-row-height")
+      .trim();
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) && value > 0
+      ? value
+      : DEFAULT_CHANNEL_ROW_HEIGHT;
   }
 
   function toast(title, message = "", type = "success") {
@@ -145,6 +158,53 @@
       return `${Math.round(bits / 1_000)} Kbps`;
     }
     return "速度检测中";
+  }
+
+  function formatClock(value) {
+    const totalSeconds = Math.max(0, Math.floor(Number(value) || 0));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (part) => String(part).padStart(2, "0");
+    return hours
+      ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+      : `${pad(minutes)}:${pad(seconds)}`;
+  }
+
+  function updateReplayProgress() {
+    const video = $("[data-channel-video]");
+    const progress = $("[data-channel-replay-progress]");
+    const seek = $("[data-channel-seek]");
+    if (!video || !progress || !seek) {
+      return;
+    }
+
+    const duration = Number(video.duration);
+    const seekable =
+      app.playbackMode === "replay" &&
+      Number.isFinite(duration) &&
+      duration > 0;
+    progress.hidden = !seekable;
+    if (!seekable) {
+      return;
+    }
+
+    const current = Math.min(
+      Math.max(Number(video.currentTime) || 0, 0),
+      duration
+    );
+    seek.max = String(duration);
+    if (!app.seeking) {
+      seek.value = String(current);
+    }
+    const percentage = Math.min(100, Math.max(0, (current / duration) * 100));
+    seek.style.setProperty("--channel-progress", `${percentage}%`);
+    seek.setAttribute(
+      "aria-valuetext",
+      `已播放 ${formatClock(current)}，总时长 ${formatClock(duration)}`
+    );
+    $("[data-channel-progress-current]").textContent = formatClock(current);
+    $("[data-channel-progress-duration]").textContent = formatClock(duration);
   }
 
   function channelColor(name) {
@@ -742,7 +802,9 @@
             }
           </span>
           <span class="channel-row__copy">
-            <strong>${escapeHtml(channel.name)}</strong>
+            <strong title="${escapeHtml(channel.name)}">${escapeHtml(
+              channel.name
+            )}</strong>
             <span>${escapeHtml(channel.group)}</span>
             ${
               currentProgram
@@ -830,25 +892,25 @@
       return;
     }
     const viewportHeight = list.clientHeight || 620;
+    const rowHeight = currentChannelRowHeight();
+    app.channelRowHeight = rowHeight;
     const start = Math.max(
       0,
-      Math.floor(list.scrollTop / CHANNEL_ROW_HEIGHT) - CHANNEL_OVERSCAN
+      Math.floor(list.scrollTop / rowHeight) - CHANNEL_OVERSCAN
     );
     const end = Math.min(
       channels.length,
-      Math.ceil(
-        (list.scrollTop + viewportHeight) / CHANNEL_ROW_HEIGHT
-      ) + CHANNEL_OVERSCAN
+      Math.ceil((list.scrollTop + viewportHeight) / rowHeight) + CHANNEL_OVERSCAN
     );
     app.channelWindow = { start, end, total: channels.length };
     list.innerHTML = `
       <div
         class="channel-virtual-spacer"
-        style="height:${channels.length * CHANNEL_ROW_HEIGHT}px"
+        style="height:${channels.length * rowHeight}px"
       >
         <div
           class="channel-virtual-window"
-          style="transform:translateY(${start * CHANNEL_ROW_HEIGHT}px)"
+          style="transform:translateY(${start * rowHeight}px)"
         >
           ${channels.slice(start, end).map(channelRowMarkup).join("")}
         </div>
@@ -875,10 +937,13 @@
     }
     app.controlsTimer = window.setTimeout(() => {
       const video = $("[data-channel-video]");
-      if (
-        video.paused ||
+      const fullscreen = isFullscreen();
+      const blockingPrompt =
         !$("[data-channel-message]").hidden ||
-        !$("[data-channel-quality-prompt]").hidden
+        !$("[data-channel-quality-prompt]").hidden;
+      if (
+        blockingPrompt ||
+        (!fullscreen && video.paused)
       ) {
         return;
       }
@@ -1262,6 +1327,11 @@
     releaseWakeLock();
     app.statsTimer = null;
     app.fallbackTimer = null;
+    app.seeking = false;
+    const progress = $("[data-channel-replay-progress]");
+    if (progress) {
+      progress.hidden = true;
+    }
     app.hls?.destroy();
     app.hls = null;
     const video = $("[data-channel-video]");
@@ -1344,6 +1414,7 @@
     try {
       await enterPlaybackFullscreen(panel, video);
       video.play().catch(() => {});
+      showPlaybackControls();
     } catch {
       toast(
         "无法自动全屏",
@@ -2073,6 +2144,23 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target.matches("[data-channel-seek]")) {
+      const video = $("[data-channel-video]");
+      const duration = Number(video.duration);
+      const nextTime = Number(event.target.value);
+      if (
+        app.playbackMode !== "replay" ||
+        !Number.isFinite(duration) ||
+        duration <= 0 ||
+        !Number.isFinite(nextTime)
+      ) {
+        return;
+      }
+      app.seeking = true;
+      video.currentTime = Math.min(Math.max(nextTime, 0), duration);
+      updateReplayProgress();
+      return;
+    }
     if (!event.target.matches("[data-channel-search]")) {
       return;
     }
@@ -2088,15 +2176,15 @@
       app.scrollFrame = null;
       const list = $("[data-channel-list]");
       const viewportHeight = list.clientHeight || 620;
+      const rowHeight = app.channelRowHeight || currentChannelRowHeight();
       const start = Math.max(
         0,
-        Math.floor(list.scrollTop / CHANNEL_ROW_HEIGHT) - CHANNEL_OVERSCAN
+        Math.floor(list.scrollTop / rowHeight) - CHANNEL_OVERSCAN
       );
       const end = Math.min(
         app.channelWindow?.total ?? Number.POSITIVE_INFINITY,
-        Math.ceil(
-          (list.scrollTop + viewportHeight) / CHANNEL_ROW_HEIGHT
-        ) + CHANNEL_OVERSCAN
+        Math.ceil((list.scrollTop + viewportHeight) / rowHeight) +
+          CHANNEL_OVERSCAN
       );
       if (
         app.channelWindow?.start === start &&
@@ -2127,6 +2215,28 @@
   });
   $("[data-channel-video]").addEventListener("play", updateButton);
   $("[data-channel-video]").addEventListener("pause", updateButton);
+  for (const eventName of [
+    "loadedmetadata",
+    "durationchange",
+    "timeupdate",
+    "seeked",
+    "ended"
+  ]) {
+    $("[data-channel-video]").addEventListener(eventName, updateReplayProgress);
+  }
+  for (const eventName of [
+    "change",
+    "pointerup",
+    "pointercancel",
+    "touchend",
+    "touchcancel",
+    "blur"
+  ]) {
+    $("[data-channel-seek]").addEventListener(eventName, () => {
+      app.seeking = false;
+      updateReplayProgress();
+    });
+  }
   $("[data-channel-video]").addEventListener("play", () => {
     requestWakeLock();
     showPlaybackControls();
@@ -2149,11 +2259,31 @@
       requestWakeLock();
     }
   });
-  document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement) {
-      screen.orientation?.unlock?.();
+  window.addEventListener("resize", () => {
+    const rowHeight = currentChannelRowHeight();
+    if (rowHeight === app.channelRowHeight) {
+      return;
     }
+    app.channelRowHeight = rowHeight;
+    renderChannels();
   });
+  for (const eventName of [
+    "fullscreenchange",
+    "webkitfullscreenchange",
+    "msfullscreenchange"
+  ]) {
+    document.addEventListener(eventName, () => {
+      const panel = $(".channel-player-panel");
+      const video = $("[data-channel-video]");
+      panel.classList.remove("is-controls-hidden");
+      if (isFullscreen()) {
+        showPlaybackControls();
+      } else {
+        screen.orientation?.unlock?.();
+        showPlaybackControls({ autoHide: !video.paused });
+      }
+    });
+  }
   $("[data-channel-detail-dialog]").addEventListener("close", () => {
     app.detailChannel = null;
     if (window.history.state?.overlay === "channel-detail") {

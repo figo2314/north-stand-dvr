@@ -1,7 +1,15 @@
+:root {
+  --channel-row-height: 78px;
+}
+
 .channel-shell {
   min-height: 100vh;
   background:
     linear-gradient(oklch(0.982 0.004 25), oklch(0.958 0.009 25));
+}
+
+.channel-shell[data-channel-scope="football"] {
+  --channel-row-height: 124px;
 }
 
 .channel-header {
@@ -114,11 +122,30 @@
   border-radius: 0;
 }
 
+.channel-player-panel:fullscreen.is-controls-hidden,
+.channel-player-panel:-webkit-full-screen.is-controls-hidden {
+  grid-template-rows: minmax(0, 1fr) 0 0;
+  cursor: none;
+}
+
+.channel-player-panel:fullscreen.is-controls-hidden .channel-player-heading,
+.channel-player-panel:fullscreen.is-controls-hidden .channel-player-controls,
+.channel-player-panel:-webkit-full-screen.is-controls-hidden .channel-player-heading,
+.channel-player-panel:-webkit-full-screen.is-controls-hidden .channel-player-controls {
+  display: none;
+}
+
 .channel-player-panel:fullscreen .channel-stage,
 .channel-player-panel:-webkit-full-screen .channel-stage {
   height: auto;
   min-height: 0;
   aspect-ratio: auto;
+}
+
+.channel-player-panel:fullscreen .channel-replay-progress,
+.channel-player-panel:-webkit-full-screen .channel-replay-progress {
+  --channel-track: oklch(1 0 0 / 0.24);
+  color: oklch(0.88 0.01 255);
 }
 
 .channel-stage {
@@ -304,12 +331,85 @@
 
 .channel-player-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px 20px 18px;
   transition:
     opacity 180ms var(--ease-out),
     transform 180ms var(--ease-out);
+}
+
+.channel-replay-progress {
+  --channel-track: oklch(0.82 0.01 255);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  flex: 1 0 100%;
+  gap: 10px;
+  align-items: center;
+  padding: 0 2px 8px;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.channel-replay-progress[hidden] {
+  display: none;
+}
+
+.channel-replay-progress input {
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.channel-replay-progress input::-webkit-slider-runnable-track {
+  height: 5px;
+  background: linear-gradient(
+    to right,
+    var(--brand) 0 var(--channel-progress, 0%),
+    var(--channel-track) var(--channel-progress, 0%) 100%
+  );
+  border-radius: 999px;
+}
+
+.channel-replay-progress input::-webkit-slider-thumb {
+  width: 15px;
+  height: 15px;
+  margin-top: -5px;
+  appearance: none;
+  background: white;
+  border: 2px solid var(--brand);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px oklch(0.1 0.02 258 / 0.24);
+}
+
+.channel-replay-progress input::-moz-range-track {
+  height: 5px;
+  background: linear-gradient(
+    to right,
+    var(--brand) 0 var(--channel-progress, 0%),
+    var(--channel-track) var(--channel-progress, 0%) 100%
+  );
+  border: 0;
+  border-radius: 999px;
+}
+
+.channel-replay-progress input::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  background: white;
+  border: 2px solid var(--brand);
+  border-radius: 50%;
+}
+
+.channel-replay-progress input:focus-visible {
+  outline: 2px solid var(--brand-soft);
+  outline-offset: 4px;
+  border-radius: 999px;
 }
 
 .channel-player-panel.is-controls-hidden .channel-player-heading {
@@ -557,8 +657,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 46px 52px;
   align-items: center;
-  height: 78px;
-  min-height: 78px;
+  height: var(--channel-row-height);
+  min-height: var(--channel-row-height);
   overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
@@ -582,8 +682,8 @@
   gap: 11px;
   align-items: center;
   min-width: 0;
-  height: 78px;
-  min-height: 78px;
+  height: var(--channel-row-height);
+  min-height: var(--channel-row-height);
   padding: 10px 4px 10px 18px;
   color: inherit;
   background: transparent;
@@ -627,6 +727,68 @@
 
 .channel-row__copy strong {
   font-size: 0.84rem;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-row__copy strong {
+  display: -webkit-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.28;
+  white-space: normal;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-row {
+  position: relative;
+  display: block;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-row__main {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-areas:
+    "mark copy"
+    "mark tail";
+  gap: 7px 11px;
+  align-items: start;
+  padding: 10px 14px;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-mark {
+  grid-area: mark;
+  align-self: start;
+  margin-top: 1px;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-row__copy {
+  grid-area: copy;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-row__tail {
+  grid-area: tail;
+  align-self: end;
+  justify-self: start;
+  min-width: 0;
+  padding-right: 96px;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-info-button,
+.channel-shell[data-channel-scope="football"] .channel-favorite {
+  position: absolute;
+  bottom: 8px;
+  z-index: 1;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-info-button {
+  right: 52px;
+}
+
+.channel-shell[data-channel-scope="football"] .channel-favorite {
+  right: 4px;
+  margin-right: 0;
 }
 
 .channel-row__copy span {
@@ -1089,6 +1251,11 @@
       calc(16px + env(safe-area-inset-left));
     color: white;
     background: oklch(0.1 0.02 258 / 0.78);
+  }
+
+  .channel-replay-progress {
+    --channel-track: oklch(1 0 0 / 0.24);
+    color: oklch(0.88 0.01 255);
   }
 
   .channel-control {

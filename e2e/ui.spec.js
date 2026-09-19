@@ -1,5 +1,11 @@
 const { test, expect } = require("@playwright/test");
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/replays/available*", async (route) => {
+    await route.fulfill({ json: { count: 0, replays: [] } });
+  });
+});
+
 test("does not expose an unrevealed score in the browser", async ({ page }) => {
   await page.goto("/#home");
   await page.locator("[data-mobile-library-open]").click();
@@ -17,6 +23,79 @@ test("does not expose an unrevealed score in the browser", async ({ page }) => {
       expect(recording.score).toBeNull();
     }
   }
+});
+
+test("home library shows only currently playable channel replays", async ({
+  page
+}) => {
+  await page.route("**/api/replays/available*", async (route) => {
+    await route.fulfill({
+      json: {
+        count: 1,
+        replays: [
+          {
+            id: "replay-chelsea",
+            channelId: "channel-chelsea-a",
+            title: "英超 布伦特福德VS切尔西 全场回放",
+            competition: "英超",
+            playedAt: "2026-09-19T03:14:55.700Z",
+            checkedAt: "2026-09-19T03:14:55.700Z",
+            durationSeconds: 0,
+            sizeBytes: 0,
+            status: "ready",
+            thumbnail:
+              "https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=82",
+            mediaUrl: "/api/replays/channel-chelsea-a/stream",
+            inputFormat: "hls",
+            sourceType: "channel-replay",
+            sourceLabel: "测试源",
+            quality: "1080p",
+            commentary: "颜强、贺宇、程思钦",
+            variants: [
+              {
+                channelId: "channel-chelsea-a",
+                label: "颜强、贺宇、程思钦",
+                commentary: "颜强、贺宇、程思钦",
+                quality: "1080p",
+                streamUrl: "/api/replays/channel-chelsea-a/stream"
+              },
+              {
+                channelId: "channel-chelsea-b",
+                label: "江忠德",
+                commentary: "江忠德",
+                quality: "1080p",
+                streamUrl: "/api/replays/channel-chelsea-b/stream"
+              }
+            ],
+            variantCount: 2,
+            watchedSeconds: 0,
+            score: null
+          }
+        ]
+      }
+    });
+  });
+
+  await page.goto("/#home");
+  await page.locator("[data-mobile-library-open]").click();
+  const replayRow = page.locator(".recording-row.is-channel-replay").first();
+  await expect(replayRow).toBeVisible();
+  await expect(replayRow).toContainText("布伦特福德VS切尔西");
+  await expect(replayRow).toContainText("当前可回放");
+  await expect(replayRow).toContainText("2 条可播线路");
+  await replayRow
+    .locator("[data-replay-variant]")
+    .selectOption("channel-chelsea-b");
+
+  await replayRow.locator("[data-play]").click();
+  await expect(page.locator("[data-player-layer]")).toBeVisible();
+  await expect(page.locator("[data-player-title]")).toContainText(
+    "布伦特福德VS切尔西"
+  );
+  await expect(page.locator("[data-player-subtitle]")).toContainText(
+    "解说 江忠德"
+  );
+  await expect(page.locator("[data-player-reveal]")).toBeHidden();
 });
 
 test("keeps the player mask enabled and the layout inside the viewport", async ({
@@ -676,6 +755,16 @@ test("home Arsenal anthem is bundled and can be played or paused", async ({
   await expect(musicLabel).toHaveText("暂停队歌");
 });
 
+test("home shows the server app version", async ({ page }) => {
+  const response = await page.request.get("/api/health");
+  expect(response.ok()).toBe(true);
+  const health = await response.json();
+  expect(health.version).toMatch(/^\d+\.\d+\.\d+$/);
+
+  await page.goto("/#home", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-app-version]")).toHaveText(health.version);
+});
+
 test("music resumes after switching to another page", async ({ page }) => {
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
   await page.mouse.click(8, 8);
@@ -1165,4 +1254,167 @@ test("football live page only lists football channels", async ({ page }) => {
   await expect(page.locator("[data-channel-list]")).toContainText("全场回放");
   await expect(page.locator("[data-channel-list]")).not.toContainText("湖南卫视");
   await expect(page.locator("[data-channel-title]")).toContainText("HIGHLIGHT");
+});
+
+test("football replay exposes a draggable seek bar", async ({ page }) => {
+  await page.route("**/api/channels", async (route) => {
+    await route.fulfill({
+      json: {
+        count: 1,
+        sources: [{ id: "test", label: "测试源", count: 1, error: null }],
+        epgUrls: [],
+        channels: [
+          {
+            id: "football-replay",
+            healthKey: "football-replay",
+            name: "西甲 巴塞罗那VS皇家马德里 全场回放",
+            group: "体育-昨天",
+            streamUrl: "https://example.com/football-replay.m3u8"
+          }
+        ]
+      }
+    });
+  });
+  await page.route("**/api/channels/probe", async (route) => {
+    await route.fulfill({
+      json: { ok: true, message: "Video: h264, 1280x720" }
+    });
+  });
+  await page.route("**/api/live/proxy*", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto("/football.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-source-state].is-ready")).toBeVisible();
+  await page.locator('[data-channel-id="football-replay"]').click();
+
+  await page.locator("[data-channel-video]").evaluate((video) => {
+    let currentTime = 120;
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      get: () => 5400
+    });
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get: () => currentTime,
+      set: (value) => {
+        currentTime = Number(value) || 0;
+      }
+    });
+    video.dispatchEvent(new Event("durationchange"));
+    video.dispatchEvent(new Event("timeupdate"));
+  });
+
+  const progress = page.locator("[data-channel-replay-progress]");
+  await expect(progress).toBeVisible();
+  await expect(page.locator("[data-channel-progress-current]")).toHaveText(
+    "02:00"
+  );
+  await expect(page.locator("[data-channel-progress-duration]")).toHaveText(
+    "1:30:00"
+  );
+
+  await page.locator("[data-channel-seek]").evaluate((seek) => {
+    seek.value = "3600";
+    seek.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect
+    .poll(() =>
+      page.locator("[data-channel-video]").evaluate((video) => video.currentTime)
+    )
+    .toBe(3600);
+  await expect(page.locator("[data-channel-progress-current]")).toHaveText(
+    "1:00:00"
+  );
+});
+
+test("fullscreen playback collapses controls until pointer activity", async ({
+  page
+}) => {
+  await page.route("**/api/live/proxy*", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto("/football.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-channel-fullscreen]").click();
+  await page.waitForFunction(() => Boolean(document.fullscreenElement));
+
+  const panel = page.locator(".channel-player-panel");
+  await page.evaluate(() => {
+    document.querySelector("[data-channel-message]").hidden = true;
+    document
+      .querySelector(".channel-player-panel")
+      .dispatchEvent(new PointerEvent("pointermove", { bubbles: true }));
+  });
+
+  await expect(panel).toHaveClass(/is-controls-hidden/, { timeout: 5_000 });
+  await expect(page.locator(".channel-player-controls")).toBeHidden();
+
+  await panel.evaluate((node) => {
+    node.dispatchEvent(new PointerEvent("pointermove", { bubbles: true }));
+  });
+  await expect(panel).not.toHaveClass(/is-controls-hidden/);
+  await expect(page.locator(".channel-player-controls")).toBeVisible();
+});
+
+test("football channel list wraps long match titles in every layout", async ({
+  page
+}) => {
+  await page.route("**/api/channels", async (route) => {
+    await route.fulfill({
+      json: {
+        count: 1,
+        sources: [{ id: "test", label: "测试源", count: 1, error: null }],
+        epgUrls: [],
+        channels: [
+          {
+            id: "tablet-long-title",
+            healthKey: "tablet-long-title",
+            name: "英超 布伦特福德VS切尔西 全场回放（颜强、贺宇、程思钦） 02:45",
+            group: "体育-今天09-19",
+            streamUrl: "https://example.com/tablet-long-title.m3u8"
+          }
+        ]
+      }
+    });
+  });
+  await page.route("**/api/live/proxy*", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto("/football.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-source-state].is-ready")).toBeVisible();
+
+  const title = page.locator(".channel-row__copy strong").first();
+  for (const viewport of [
+    { width: 420, height: 900 },
+    { width: 820, height: 1180 },
+    { width: 1440, height: 900 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.waitForTimeout(100);
+    const styles = await title.evaluate((node) => {
+      const computed = getComputedStyle(node);
+      return {
+        whiteSpace: computed.whiteSpace,
+        lineClamp: computed.webkitLineClamp,
+        lineHeight: Number.parseFloat(computed.lineHeight),
+        height: node.getBoundingClientRect().height,
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight
+      };
+    });
+    expect(styles.whiteSpace).toBe("normal");
+    expect(styles.lineClamp).toBe("2");
+    expect(styles.scrollHeight).toBeLessThanOrEqual(styles.clientHeight + 1);
+
+    await expect(page.locator(".channel-row").first()).toHaveCSS(
+      "height",
+      "124px"
+    );
+    await expect(page.locator(".channel-virtual-spacer")).toHaveAttribute(
+      "style",
+      /height:\s*124px/
+    );
+  }
 });

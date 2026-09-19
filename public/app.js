@@ -6,8 +6,10 @@
 
   const app = {
     data: null,
+    availableReplays: [],
     view: "home",
     activeRecording: null,
+    playerHls: null,
     progressTimer: null,
     lastSavedProgress: 0,
     maskDraft: null,
@@ -616,7 +618,20 @@
     }
   }
 
+  function destroyPlayerHls() {
+    app.playerHls?.destroy();
+    app.playerHls = null;
+  }
+
   function renderRecordingResult(recording) {
+    if (recording.sourceType === "channel-replay") {
+      return `
+        <span class="recording-result is-live">
+          <i data-lucide="radio"></i>
+          当前可回放
+        </span>
+      `;
+    }
     if (recording.score) {
       return `
         <span class="recording-result is-revealed">
@@ -633,27 +648,153 @@
     `;
   }
 
+  function renderAvailableReplayRow(replay) {
+    const checkedAt = replay.checkedAt ? formatLibraryDate(replay.checkedAt) : "刚刚";
+    const variants =
+      Array.isArray(replay.variants) && replay.variants.length
+        ? replay.variants
+        : [
+            {
+              channelId: replay.channelId,
+              label: replay.commentary || "默认解说",
+              quality: replay.quality || "已连接"
+            }
+          ];
+    const variantCount = variants.length;
+    const selectedChannelId = replay.channelId || variants[0].channelId;
+    const variantPicker =
+      variantCount > 1
+        ? `
+          <label class="replay-variant-picker">
+            <span><i data-lucide="mic-2"></i>解说</span>
+            <select data-replay-variant="${escapeHtml(replay.id)}">
+              ${variants
+                .map(
+                  (variant) => `
+                    <option
+                      value="${escapeHtml(variant.channelId)}"
+                      ${variant.channelId === selectedChannelId ? "selected" : ""}
+                    >${escapeHtml(
+                      `${variant.label} · ${variant.quality || "已连接"}`
+                    )}</option>
+                  `
+                )
+                .join("")}
+            </select>
+          </label>
+        `
+        : `
+          <span class="replay-variant-single">
+            <i data-lucide="mic-2"></i>
+            ${escapeHtml(variants[0].label || "默认解说")}
+          </span>
+        `;
+    return `
+      <article class="recording-row is-channel-replay" data-replay-id="${escapeHtml(
+        replay.id
+      )}">
+        <div class="recording-visual">
+          <img
+            src="${escapeHtml(replay.thumbnail)}"
+            alt=""
+            loading="lazy"
+          />
+          <span class="spoiler-tape is-live">
+            <i data-lucide="radio"></i>
+            当前可回放
+          </span>
+          <span class="recording-length">${escapeHtml(
+            replay.quality || "HLS 回放"
+          )}</span>
+        </div>
+        <div class="recording-copy">
+          <div class="recording-kicker">
+            <span>${escapeHtml(replay.competition || "足球回放")}</span>
+            <span aria-hidden="true">·</span>
+            <span>${escapeHtml(checkedAt)}检测</span>
+          </div>
+          <h3>${escapeHtml(replay.title)}</h3>
+          <div class="recording-meta">
+            <span>
+              <i data-lucide="radio-tower"></i>
+              ${escapeHtml(replay.sourceLabel || "直播源")}
+            </span>
+            <span>
+              <i data-lucide="layers-3"></i>
+              ${variantCount} 条可播线路
+            </span>
+          </div>
+          ${renderRecordingResult(replay)}
+        </div>
+        <div class="recording-actions recording-actions--replay">
+          ${variantPicker}
+          <button class="play-button" type="button" data-play="${escapeHtml(
+            replay.id
+          )}">
+            <i data-lucide="play"></i>
+            播放回放
+          </button>
+          <button
+            class="subtle-button"
+            type="button"
+            data-refresh-replays
+          >
+            <i data-lucide="refresh-cw"></i>
+            重新检测
+          </button>
+        </div>
+      </article>
+    `;
+  }
+
+  async function loadAvailableReplays({ force = false, quiet = true } = {}) {
+    try {
+      const payload = await api(
+        `/api/replays/available${force ? "?refresh=1" : ""}`
+      );
+      app.availableReplays = Array.isArray(payload.replays)
+        ? payload.replays
+        : [];
+      renderRecordings();
+      renderMobileHome();
+    } catch (error) {
+      if (!quiet) {
+        toast("无法读取当前回放", error.message, "error");
+      }
+    }
+  }
+
   function renderRecordings() {
     const list = $("[data-recording-list]");
     const recordings = app.data?.recordings || [];
     const ready = recordings.filter((recording) => recording.status === "ready");
+    const availableReplays = app.availableReplays || [];
     const summary = $("[data-ready-summary]");
 
     if (summary) {
-      summary.textContent = ready.length
-        ? `${ready.length} 场录像已就绪，合计 ${formatBytes(
-            ready.reduce((sum, recording) => sum + Number(recording.sizeBytes || 0), 0)
-          )}。`
-        : "目录里暂时没有可播放的录像。";
+      const replayCopy = availableReplays.length
+        ? `${availableReplays.length} 场直播回放当前可播`
+        : "";
+      const localCopy = ready.length
+        ? `${ready.length} 段本地录像已就绪，合计 ${formatBytes(
+            ready.reduce(
+              (sum, recording) => sum + Number(recording.sizeBytes || 0),
+              0
+            )
+          )}`
+        : "";
+      summary.textContent =
+        [replayCopy, localCopy].filter(Boolean).join(" · ") ||
+        "正在检测当前可回放的直播源…";
     }
 
-    if (!ready.length) {
+    if (!ready.length && !availableReplays.length) {
       list.innerHTML = `
         <div class="empty-library">
           <div>
             <i data-lucide="clapperboard"></i>
-            <h3>录像库还是空的</h3>
-            <p>扫描设置的录像目录，或者导入一个本地视频文件。导入后，标题和封面仍会默认隐藏赛果。</p>
+            <h3>暂时没有可回放的内容</h3>
+            <p>服务会持续检测足球回放源；只有确认当前可播的场次才会出现在这里。也可以扫描录像目录或导入本地视频。</p>
           </div>
         </div>
       `;
@@ -661,7 +802,7 @@
       return;
     }
 
-    list.innerHTML = ready
+    const localRows = ready
       .sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt))
       .map((recording) => {
         const hidden = !recording.score;
@@ -731,6 +872,10 @@
         `;
       })
       .join("");
+    list.innerHTML = [
+      ...availableReplays.map(renderAvailableReplayRow),
+      localRows
+    ].join("");
     refreshIcons();
   }
 
@@ -747,6 +892,7 @@
     const readyCount = recordings.filter(
       (recording) => recording.status === "ready"
     ).length;
+    const replayCount = app.availableReplays.length;
     const activeJob = app.data?.health?.activeJobs?.[0] || null;
     const activeFixture = activeJob
       ? app.data?.fixtures?.find((fixture) => fixture.id === activeJob.fixtureId)
@@ -758,7 +904,9 @@
     if (!title || !copy || !beacon) {
       return;
     }
-    $("[data-mobile-recording-count]").textContent = String(readyCount);
+    $("[data-mobile-recording-count]").textContent = String(
+      readyCount + replayCount
+    );
     beacon.classList.remove("is-ready", "is-error");
     if (activeFixture) {
       title.textContent = "正在录制";
@@ -855,6 +1003,7 @@
     $("[data-mask-strategy]").textContent = settings.burnInMask
       ? "写入录像文件"
       : "播放器遮罩";
+    $("[data-app-version]").textContent = health.version || "未知";
 
     const railStatus = $("[data-rail-status]");
     const railStrong = $("strong", railStatus);
@@ -1425,6 +1574,7 @@
       app.data = await api("/api/state");
       renderAll();
       populateSettings();
+      loadAvailableReplays();
     } catch (error) {
       if (!quiet) {
         toast("无法连接本地服务", error.message, "error");
@@ -1690,12 +1840,15 @@
   }
 
   function openPlayer(recordingId) {
-    const recording = app.data.recordings.find((item) => item.id === recordingId);
+    const recording =
+      app.data.recordings.find((item) => item.id === recordingId) ||
+      app.availableReplays.find((item) => item.id === recordingId);
     if (!recording) {
       toast("没有找到这段录像", "", "error");
       return;
     }
 
+    const isChannelReplay = recording.sourceType === "channel-replay";
     app.activeRecording = recording;
     app.lastSavedProgress = recording.watchedSeconds || 0;
     pauseHomeMusic();
@@ -1705,10 +1858,22 @@
     const shell = $(".player-shell");
 
     $("[data-player-title]").textContent = recording.title;
+    const subtitle = $("[data-player-subtitle]");
+    if (subtitle) {
+      const commentary = isChannelReplay && recording.commentary
+        ? `解说 ${recording.commentary} · `
+        : "";
+      subtitle.textContent = isChannelReplay
+        ? `当前可回放 · ${commentary}${recording.quality || "HLS"} · ${
+            recording.variantCount || 1
+          } 条线路`
+        : "比分与赛果已封存";
+    }
     $("[data-score-shield]").classList.toggle(
       "is-hidden",
-      !app.data.settings.spoilerMode
+      isChannelReplay || !app.data.settings.spoilerMode
     );
+    $("[data-player-reveal]").hidden = isChannelReplay;
     message.hidden = true;
     layer.hidden = false;
     if (window.history.state?.overlay !== "player") {
@@ -1728,21 +1893,50 @@
       return;
     }
 
-    video.src = recording.mediaUrl;
-    video.currentTime = Math.min(
-      Number(recording.watchedSeconds || 0),
-      Number(recording.durationSeconds || 0) || Number(recording.watchedSeconds || 0)
-    );
-    video.load();
-    video.play().catch(() => {
-      // Autoplay policies can wait for a direct user gesture; the play button stays available.
-    });
+    destroyPlayerHls();
+    if (isChannelReplay && window.Hls?.isSupported()) {
+      const hls = new window.Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+        backBufferLength: 60
+      });
+      app.playerHls = hls;
+      hls.loadSource(recording.mediaUrl);
+      hls.attachMedia(video);
+      hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {
+          // Autoplay policies can wait for a direct user gesture.
+        });
+      });
+      hls.on(window.Hls.Events.ERROR, (_, data) => {
+        if (!data?.fatal) {
+          return;
+        }
+        message.hidden = false;
+        message.querySelector("strong").textContent = "回放暂时无法播放";
+        message.querySelector("p").textContent = "这条回放线路可能已经下线，请回到待看录像重新检测。";
+      });
+    } else {
+      video.src = recording.mediaUrl;
+      video.currentTime = Math.min(
+        Number(recording.watchedSeconds || 0),
+        Number(recording.durationSeconds || 0) ||
+          Number(recording.watchedSeconds || 0)
+      );
+      video.load();
+      video.play().catch(() => {
+        // Autoplay policies can wait for a direct user gesture; the play button stays available.
+      });
+    }
     window.setTimeout(() => shell.focus?.(), 0);
   }
 
   function closePlayer() {
     const video = $("[data-video]");
     savePlayerProgress(true);
+    destroyPlayerHls();
     video.pause();
     video.removeAttribute("src");
     video.load();
@@ -1768,6 +1962,11 @@
     if (!recording) {
       return;
     }
+    if (recording.sourceType === "channel-replay") {
+      button.hidden = true;
+      return;
+    }
+    button.hidden = false;
     if (recording.score) {
       button.innerHTML = `<i data-lucide="eye"></i>${escapeHtml(
         recording.score.home
@@ -1783,7 +1982,11 @@
   async function savePlayerProgress(force = false) {
     const video = $("[data-video]");
     const recording = app.activeRecording;
-    if (!recording || !Number.isFinite(video.currentTime)) {
+    if (
+      !recording ||
+      recording.sourceType === "channel-replay" ||
+      !Number.isFinite(video.currentTime)
+    ) {
       return;
     }
     const current = Math.floor(video.currentTime);
@@ -2119,6 +2322,31 @@
   }
 
   function bindEvents() {
+    document.addEventListener("change", (event) => {
+      if (!event.target.matches("[data-replay-variant]")) {
+        return;
+      }
+      const replay = app.availableReplays.find(
+        (item) => item.id === event.target.dataset.replayVariant
+      );
+      const variant = replay?.variants?.find(
+        (item) => item.channelId === event.target.value
+      );
+      if (!replay || !variant) {
+        return;
+      }
+      replay.channelId = variant.channelId;
+      replay.mediaUrl = variant.streamUrl;
+      replay.quality = variant.quality || replay.quality;
+      replay.commentary = variant.commentary || variant.label;
+      const length = event.target
+        .closest(".recording-row")
+        ?.querySelector(".recording-length");
+      if (length) {
+        length.textContent = replay.quality || "HLS 回放";
+      }
+    });
+
     document.addEventListener("click", (event) => {
       const cancelButton = event.target.closest('dialog button[value="cancel"]');
       if (cancelButton) {
@@ -2169,6 +2397,11 @@
       const recordButton = event.target.closest("[data-record-now]");
       if (recordButton) {
         recordFixtureNow(recordButton.dataset.recordNow);
+        return;
+      }
+
+      if (event.target.closest("[data-refresh-replays]")) {
+        loadAvailableReplays({ force: true, quiet: false });
         return;
       }
 
