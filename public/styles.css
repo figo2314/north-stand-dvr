@@ -612,6 +612,42 @@ main {
   margin-top: 16px;
 }
 
+.library-group-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 2px 0;
+  color: var(--ink-muted);
+}
+
+.library-group-heading:not(:first-child) {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.library-group-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.library-group-heading svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.library-group-heading h3 {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.library-group-heading > span {
+  font-size: 0.72rem;
+}
+
 .recording-row {
   --status-color: var(--success);
   display: grid;
@@ -3492,6 +3528,12 @@ main {
 
   .section-heading {
     align-items: flex-start;
+  }
+
+  .library-group-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .schedule-surface .section-heading {

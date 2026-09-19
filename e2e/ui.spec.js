@@ -9,6 +9,9 @@ test.beforeEach(async ({ page }) => {
 test("does not expose an unrevealed score in the browser", async ({ page }) => {
   await page.goto("/#home");
   await page.locator("[data-mobile-library-open]").click();
+  await expect(page.locator(".library-group-heading")).toContainText(
+    "本地录像"
+  );
   await expect(page.locator(".recording-row").first()).toBeVisible();
   expect(await page.locator(".recording-row").count()).toBeGreaterThan(0);
   await expect(page.locator(".recording-result").first()).toContainText("比分已封存");
@@ -78,6 +81,9 @@ test("home library shows only currently playable channel replays", async ({
 
   await page.goto("/#home");
   await page.locator("[data-mobile-library-open]").click();
+  await expect(page.locator(".library-group-heading").first()).toContainText(
+    "线上回放"
+  );
   const replayRow = page.locator(".recording-row.is-channel-replay").first();
   await expect(replayRow).toBeVisible();
   await expect(replayRow).toContainText("布伦特福德VS切尔西");

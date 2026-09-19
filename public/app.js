@@ -773,7 +773,7 @@
 
     if (summary) {
       const replayCopy = availableReplays.length
-        ? `${availableReplays.length} 场直播回放当前可播`
+        ? `${availableReplays.length} 场线上回放当前可播`
         : "";
       const localCopy = ready.length
         ? `${ready.length} 段本地录像已就绪，合计 ${formatBytes(
@@ -785,7 +785,7 @@
         : "";
       summary.textContent =
         [replayCopy, localCopy].filter(Boolean).join(" · ") ||
-        "正在检测当前可回放的直播源…";
+        "正在检测咪咕及其他可播放的线上回放…";
     }
 
     if (!ready.length && !availableReplays.length) {
@@ -872,10 +872,31 @@
         `;
       })
       .join("");
-    list.innerHTML = [
-      ...availableReplays.map(renderAvailableReplayRow),
-      localRows
-    ].join("");
+    const replayGroup = availableReplays.length
+      ? `
+        <div class="library-group-heading">
+          <div>
+            <i data-lucide="radio"></i>
+            <h3>线上回放</h3>
+          </div>
+          <span>咪咕及其他已检测可播线路</span>
+        </div>
+        ${availableReplays.map(renderAvailableReplayRow).join("")}
+      `
+      : "";
+    const localGroup = ready.length
+      ? `
+        <div class="library-group-heading">
+          <div>
+            <i data-lucide="hard-drive"></i>
+            <h3>本地录像</h3>
+          </div>
+          <span>保存在北看台录像目录</span>
+        </div>
+        ${localRows}
+      `
+      : "";
+    list.innerHTML = [replayGroup, localGroup].join("");
     refreshIcons();
   }
 
@@ -2370,6 +2391,7 @@
       if (event.target.closest("[data-mobile-library-open]")) {
         $('[data-view-panel="home"]')?.classList.add("is-mobile-library");
         document.body.classList.add("is-home-library");
+        loadAvailableReplays();
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
