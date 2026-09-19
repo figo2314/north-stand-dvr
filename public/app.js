@@ -2374,6 +2374,49 @@
     }
   }
 
+  function setupPlayerMediaControls() {
+    const video = $("[data-video]");
+    const pipButton = $("[data-player-pip]");
+    const castButton = $("[data-player-cast]");
+
+    pipButton.hidden = !(
+      document.pictureInPictureEnabled &&
+      typeof video.requestPictureInPicture === "function"
+    );
+    castButton.hidden = !(
+      video.remote && typeof video.remote.prompt === "function"
+    );
+  }
+
+  async function togglePlayerPictureInPicture() {
+    const video = $("[data-video]");
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (
+        document.pictureInPictureEnabled &&
+        typeof video.requestPictureInPicture === "function"
+      ) {
+        await video.requestPictureInPicture();
+      }
+    } catch (error) {
+      toast("无法进入画中画", error.message, "error");
+    }
+  }
+
+  async function promptPlayerRemotePlayback() {
+    const video = $("[data-video]");
+    if (!video.remote || typeof video.remote.prompt !== "function") {
+      toast("浏览器不支持网页投屏", "可以使用系统投屏或电视浏览器继续播放。", "error");
+      return;
+    }
+    try {
+      await video.remote.prompt();
+    } catch {
+      // The user may dismiss the device picker.
+    }
+  }
+
   function bindEvents() {
     document.addEventListener("change", (event) => {
       if (!event.target.matches("[data-replay-variant]")) {
@@ -2689,6 +2732,16 @@
         return;
       }
 
+      if (event.target.closest("[data-player-pip]")) {
+        togglePlayerPictureInPicture();
+        return;
+      }
+
+      if (event.target.closest("[data-player-cast]")) {
+        promptPlayerRemotePlayback();
+        return;
+      }
+
       if (event.target.closest("[data-player-mute]")) {
         const video = $("[data-video]");
         video.muted = !video.muted;
@@ -2853,6 +2906,7 @@
 
   async function boot() {
     bindEvents();
+    setupPlayerMediaControls();
     if (isLibraryRoute()) {
       showLibraryPage();
     } else {

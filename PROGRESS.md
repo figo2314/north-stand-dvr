@@ -11,6 +11,8 @@ Updated: 2026-09-19
   mutating the Home view in place; the library has its own title and back path.
 - The mobile bottom navigation uses `看球` in place of the former schedule
   shortcut and keeps that tab active on `/library.html`.
+- The recording player now matches the live player's convenience controls:
+  picture-in-picture, remote-playback casting, and fullscreen when supported.
 - Online and local items are visually separated as `线上回放` and `本地录像`.
 - The mobile and desktop home surfaces now share a compact control-console
   layout with above-the-fold status, live entries, `看球`, radar, and quick

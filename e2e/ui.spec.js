@@ -118,6 +118,12 @@ test("keeps the player mask enabled and the layout inside the viewport", async (
   await page.goto("/library.html");
   await page.locator("[data-play]").first().click();
   await expect(page.locator("[data-player-layer]")).toBeVisible();
+  await expect(page.locator("[data-player-fullscreen]")).toBeVisible();
+  await expect(
+    page.locator(
+      "[data-player-pip], [data-player-cast], [data-player-fullscreen]"
+    )
+  ).toHaveCount(3);
   await expect(page.locator("[data-score-shield]")).toBeVisible();
   await page.locator("[data-player-close]").click();
 

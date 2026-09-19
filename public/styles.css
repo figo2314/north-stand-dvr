@@ -4602,6 +4602,26 @@ body[data-active-view="home"]:not(.is-home-library) .mobile-bar .mobile-music-to
   }
 }
 
+@media (max-width: 480px) {
+  .control-row {
+    gap: 8px;
+  }
+
+  .control-cluster {
+    gap: 4px;
+  }
+
+  .player-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .player-time {
+    margin-left: 0;
+    font-size: 0.62rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
