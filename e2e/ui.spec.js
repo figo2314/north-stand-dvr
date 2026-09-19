@@ -965,15 +965,15 @@ test("channel page opens TVB Jade by default when available", async ({ page }) =
             streamUrl: "https://example.com/cctv.m3u8"
           },
           {
-            id: "jade-playable",
-            healthKey: "jade-playable",
+            id: "jade-offline",
+            healthKey: "jade-offline",
             name: "TVB翡翠台 1080P",
             group: "港澳台频道",
             streamUrl: "https://example.com/jade.m3u8",
             health: {
               checkedAt: new Date().toISOString(),
-              playable: true,
-              quality: "1080p",
+              playable: false,
+              quality: "离线",
               height: 1080,
               latencyMs: 120
             }

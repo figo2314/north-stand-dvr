@@ -375,16 +375,14 @@
     );
     const preferredExact = candidates.find((channel) => {
       const name = channel.name.trim();
-      const cached = freshQuality(channel);
-      return name === "TVB翡翠台 1080P" && cached?.playable !== false;
+      return name === "TVB翡翠台 1080P";
     });
     if (preferredExact) {
       return preferredExact;
     }
     if (isMobilePlayback()) {
       const efficient = candidates.find((channel) => {
-        const cached = freshQuality(channel);
-        return /1080p/i.test(channel.name) && cached?.playable !== false;
+        return /1080p/i.test(channel.name);
       });
       if (efficient) {
         return efficient;
@@ -397,12 +395,7 @@
     if (playable) {
       return playable;
     }
-    return (
-      candidates.find((channel) => {
-        const cached = freshQuality(channel);
-        return !cached || cached.playable !== false;
-      }) || null
-    );
+    return candidates[0] || null;
   }
 
   function preferredAutoChannel() {
@@ -1485,9 +1478,11 @@
     if (!channel) {
       return;
     }
+    const keepSelectedChannel = DEFAULT_CHANNEL_PATTERN.test(channel.name);
+    autoFallback = autoFallback && !keepSelectedChannel;
     destroyPlayer();
     app.activeChannel = channel;
-    app.autoSelecting = autoSelect;
+    app.autoSelecting = autoSelect && !keepSelectedChannel;
     app.playbackStartedAt = 0;
     app.stutterEvents = [];
     hideQualityPrompt();
