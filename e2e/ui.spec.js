@@ -7,8 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("does not expose an unrevealed score in the browser", async ({ page }) => {
-  await page.goto("/#home");
-  await page.locator("[data-mobile-library-open]").click();
+  await page.goto("/library.html");
   await expect(page.locator(".library-group-heading")).toContainText(
     "本地录像"
   );
@@ -31,6 +30,7 @@ test("does not expose an unrevealed score in the browser", async ({ page }) => {
 test("home library shows only currently playable channel replays", async ({
   page
 }) => {
+  await page.setViewportSize({ width: 820, height: 900 });
   await page.route("**/api/replays/available*", async (route) => {
     await route.fulfill({
       json: {
@@ -79,8 +79,7 @@ test("home library shows only currently playable channel replays", async ({
     });
   });
 
-  await page.goto("/#home");
-  await page.locator("[data-mobile-library-open]").click();
+  await page.goto("/library.html");
   await expect(page.locator(".library-group-heading").first()).toContainText(
     "线上回放"
   );
@@ -89,6 +88,15 @@ test("home library shows only currently playable channel replays", async ({
   await expect(replayRow).toContainText("布伦特福德VS切尔西");
   await expect(replayRow).toContainText("当前可回放");
   await expect(replayRow).toContainText("2 条可播线路");
+  const actionHeights = await replayRow.evaluate((row) => {
+    const nodes = [
+      row.querySelector(".replay-variant-picker"),
+      row.querySelector(".play-button"),
+      row.querySelector(".subtle-button")
+    ];
+    return nodes.map((node) => node.getBoundingClientRect().height);
+  });
+  expect(Math.max(...actionHeights) - Math.min(...actionHeights)).toBeLessThan(1);
   await replayRow
     .locator("[data-replay-variant]")
     .selectOption("channel-chelsea-b");
@@ -107,8 +115,7 @@ test("home library shows only currently playable channel replays", async ({
 test("keeps the player mask enabled and the layout inside the viewport", async ({
   page
 }) => {
-  await page.goto("/#home");
-  await page.locator("[data-mobile-library-open]").click();
+  await page.goto("/library.html");
   await page.locator("[data-play]").first().click();
   await expect(page.locator("[data-player-layer]")).toBeVisible();
   await expect(page.locator("[data-score-shield]")).toBeVisible();
@@ -141,8 +148,7 @@ test("cancel actions do not create an unintended fixture or reveal", async ({
   await page.locator("[data-schedule-dialog] [value=cancel]").first().click();
   await expect(page.locator("[data-schedule-dialog]")).not.toBeVisible();
 
-  await page.goto("/#home");
-  await page.locator("[data-mobile-library-open]").click();
+  await page.goto("/library.html");
   await page.locator("[data-reveal]").first().click();
   await expect(page.locator("[data-reveal-dialog]")).toBeVisible();
   await page.locator("[data-reveal-dialog] [value=cancel]").click();
@@ -640,11 +646,19 @@ test("mobile tab bar navigates between the primary views", async ({ page }) => {
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
 
   await expect(page.locator(".mobile-tabbar")).toBeVisible();
-  await page.locator(".mobile-tab[data-mobile-tab='schedule']").click();
-  await expect(page.locator('[data-view-panel="schedule"]')).toBeVisible();
-  await expect(page).toHaveURL(/#schedule$/);
+  await Promise.all([
+    page.waitForURL(/\/library\.html$/),
+    page.locator(".mobile-tab[data-mobile-tab='library']").click()
+  ]);
+  await expect(page.locator("[data-recording-list]")).toBeVisible();
+  await expect(page.locator(".mobile-tab[data-mobile-tab='library']")).toHaveClass(
+    /is-active/
+  );
 
-  await page.locator(".mobile-tab[data-mobile-tab='settings']").click();
+  await Promise.all([
+    page.waitForURL(/#settings$/),
+    page.locator(".mobile-tab[data-mobile-tab='settings']").click()
+  ]);
   await expect(page.locator('[data-view-panel="settings"]')).toBeVisible();
   await expect(page.locator(".mobile-tab[data-mobile-tab='settings']")).toHaveClass(
     /is-active/
@@ -671,6 +685,12 @@ test("mobile home shows a compact launcher and opens the recording library", asy
   await expect(
     page.locator(".home-mobile-launcher [data-mobile-library-open]")
   ).toContainText("看球");
+  await expect(
+    page.locator(".home-entry-grid [data-mobile-library-open] small")
+  ).toContainText("回放");
+  await expect(
+    page.locator('.home-entry-grid a[href="/mockup.html"] small')
+  ).toContainText("赛程");
   await expect(page.locator(".home-mobile-launcher")).not.toContainText(
     "待看录像"
   );
@@ -689,13 +709,48 @@ test("mobile home shows a compact launcher and opens the recording library", asy
     .locator(".home-live-entry")
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
   expect(Math.abs(liveHeights[0] - liveHeights[1])).toBeLessThan(1);
-  await expect(page.locator('[data-view-panel="home"] > .page-header')).toBeHidden();
-  await page.locator("[data-mobile-library-open]").click();
+  await expect(
+    page.locator('[data-view-panel="home"] > .page-header')
+  ).toContainText("早上好");
+  await Promise.all([
+    page.waitForURL(/\/library\.html$/),
+    page.locator("[data-mobile-library-open]").click()
+  ]);
+  await expect(page.locator(".home-mobile-launcher")).toBeHidden();
   await expect(page.locator("[data-mobile-library-back]")).toBeVisible();
   await expect(page.locator("[data-recording-list]")).toBeVisible();
 
-  await page.locator("[data-mobile-library-back]").click();
+  await Promise.all([
+    page.waitForURL(/\/#home$/),
+    page.locator("[data-mobile-library-back]").click()
+  ]);
   await expect(page.locator(".home-mobile-launcher")).toBeVisible();
+});
+
+test("mobile home keeps primary actions above the tab bar", async ({ page }) => {
+  for (const viewport of [
+    { width: 320, height: 740 },
+    { width: 390, height: 844 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/#home", { waitUntil: "domcontentloaded" });
+
+    const layout = await page.evaluate(() => {
+      const quick = document.querySelector(".home-launcher-quick");
+      const tabbar = document.querySelector(".mobile-tabbar");
+      return {
+        quickBottom: quick.getBoundingClientRect().bottom,
+        tabbarTop: tabbar.getBoundingClientRect().top,
+        overflow:
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth
+      };
+    });
+
+    expect(layout.overflow).toBe(false);
+    expect(layout.quickBottom).toBeLessThanOrEqual(layout.tabbarTop);
+    expect(layout.tabbarTop - layout.quickBottom).toBeLessThanOrEqual(40);
+  }
 });
 
 test("home Arsenal anthem is bundled and can be played or paused", async ({

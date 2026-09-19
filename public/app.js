@@ -1579,7 +1579,9 @@
     if (!app.data) {
       return;
     }
-    document.title = app.data.settings.displayName || "北看台";
+    document.title = isLibraryRoute()
+      ? "看球 · 北看台"
+      : app.data.settings.displayName || "北看台";
     for (const node of $$("[data-display-name]")) {
       node.textContent = app.data.settings.displayName || "北看台";
     }
@@ -1602,6 +1604,35 @@
         toast("无法连接本地服务", error.message, "error");
       }
     }
+  }
+
+  function isLibraryRoute() {
+    return /^\/library(?:\.html)?\/?$/.test(window.location.pathname);
+  }
+
+  function showLibraryPage() {
+    app.view = "home";
+    document.body.dataset.activeView = "home";
+    document.body.classList.add("is-home-library", "is-library-page");
+
+    const panel = $('[data-view-panel="home"]');
+    panel.hidden = false;
+    panel.classList.add("is-active", "is-mobile-library");
+
+    for (const button of $$("[data-view]")) {
+      button.classList.toggle("is-active", button.dataset.view === "home");
+    }
+    for (const tab of $$("[data-mobile-tab]")) {
+      const active = tab.dataset.mobileTab === "library";
+      tab.classList.toggle("is-active", active);
+      if (active) {
+        tab.setAttribute("aria-current", "page");
+      } else {
+        tab.removeAttribute("aria-current");
+      }
+    }
+
+    document.title = "看球 · 北看台";
   }
 
   function navigate(view) {
@@ -2384,19 +2415,27 @@
 
       const viewButton = event.target.closest("[data-view]");
       if (viewButton) {
+        if (isLibraryRoute()) {
+          const view = viewButton.dataset.view;
+          window.location.assign(view === "home" ? "/#home" : `/#${view}`);
+          return;
+        }
         navigate(viewButton.dataset.view);
         return;
       }
 
       if (event.target.closest("[data-mobile-library-open]")) {
-        $('[data-view-panel="home"]')?.classList.add("is-mobile-library");
-        document.body.classList.add("is-home-library");
-        loadAvailableReplays();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (isLibraryRoute()) {
+          showLibraryPage();
+        }
         return;
       }
 
       if (event.target.closest("[data-mobile-library-back]")) {
+        if (isLibraryRoute()) {
+          window.location.assign("/#home");
+          return;
+        }
         $('[data-view-panel="home"]')?.classList.remove("is-mobile-library");
         document.body.classList.remove("is-home-library");
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2814,7 +2853,11 @@
 
   async function boot() {
     bindEvents();
-    navigate(window.location.hash.slice(1) || "home");
+    if (isLibraryRoute()) {
+      showLibraryPage();
+    } else {
+      navigate(window.location.hash.slice(1) || "home");
+    }
     initializeHomeBackdrop();
     initializeHomeMusic();
     await Promise.all([loadState(), loadChannelSources(), loadTvConfig()]);

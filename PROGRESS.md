@@ -7,9 +7,16 @@ Updated: 2026-09-19
 - The local app is implemented and runs at http://127.0.0.1:4173.
 - The mobile home entry is now `看球`; it opens one library containing
   currently playable online replays and local recordings.
+- `看球` now navigates to the dedicated `/library.html` route instead of
+  mutating the Home view in place; the library has its own title and back path.
+- The mobile bottom navigation uses `看球` in place of the former schedule
+  shortcut and keeps that tab active on `/library.html`.
 - Online and local items are visually separated as `线上回放` and `本地录像`.
-- The latest published commit before the current uncommitted UI cleanup is
-  `5e6cfc0 Add build version and simplify mobile home launcher`.
+- The mobile and desktop home surfaces now share a compact control-console
+  layout with above-the-fold status, live entries, `看球`, radar, and quick
+  actions.
+- The `1.0.1` release builds on published commit
+  `3accfe3 Clarify mobile replay library groups`.
 - The match radar mockup is available at http://127.0.0.1:4173/mockup.html.
 - Radar match actions now create or remove real scheduled fixtures through the
   local API and carry the selected M3U stream URL into the recording schedule.
@@ -27,7 +34,7 @@ Updated: 2026-09-19
 ## Latest Verification
 
 - `npm test`: 43 tests passed.
-- `npm run test:ui`: 28 browser tests passed.
+- `npm run test:ui`: 29 browser tests passed.
 - A real M3U full replay was captured for 60 seconds and retained for playback.
 - The VM deployment now uses Ubuntu's native FFmpeg through
   `deploy/ffmpeg-host.sh`; the static glibc build was confirmed to crash only

@@ -528,6 +528,10 @@ app.use((request, response, next) => {
   basicAuth(request, response, next);
 });
 app.use(express.json({ limit: "256kb" }));
+app.get(["/library", "/library.html"], (_request, response) => {
+  response.sendFile(path.join(ROOT, "public", "index.html"));
+});
+
 app.use(express.static(path.join(ROOT, "public")));
 app.get("/vendor/lucide.js", (request, response) => {
   response.sendFile(path.join(ROOT, "node_modules", "lucide", "dist", "umd", "lucide.min.js"));
