@@ -904,9 +904,10 @@
     if (!title || !copy || !beacon) {
       return;
     }
-    $("[data-mobile-recording-count]").textContent = String(
-      readyCount + replayCount
-    );
+    const recordingCount = $("[data-mobile-recording-count]");
+    if (recordingCount) {
+      recordingCount.textContent = String(readyCount + replayCount);
+    }
     beacon.classList.remove("is-ready", "is-error");
     if (activeFixture) {
       title.textContent = "正在录制";

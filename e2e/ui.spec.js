@@ -662,6 +662,12 @@ test("mobile home shows a compact launcher and opens the recording library", asy
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
 
   await expect(page.locator(".home-mobile-launcher")).toBeVisible();
+  await expect(
+    page.locator(".home-mobile-launcher [data-mobile-library-open]")
+  ).toContainText("看球");
+  await expect(page.locator(".home-mobile-launcher")).not.toContainText(
+    "待看录像"
+  );
   await expect(page.locator(".mobile-arsenal-strip")).toContainText("ARSENAL");
   await expect(page.locator(".mobile-music-toggle")).toBeVisible();
   await expect(
@@ -759,7 +765,7 @@ test("home shows the server app version", async ({ page }) => {
   const response = await page.request.get("/api/health");
   expect(response.ok()).toBe(true);
   const health = await response.json();
-  expect(health.version).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(health.version).toMatch(/^\d+\.\d+\.\d+\+[a-f0-9]{8}$/);
 
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-app-version]")).toHaveText(health.version);
