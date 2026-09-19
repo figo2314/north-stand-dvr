@@ -1,8 +1,9 @@
-const CACHE_NAME = "north-stand-shell-v26";
+const CACHE_NAME = "north-stand-shell-v29";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/styles.css",
+  "/ui.css",
   "/app.js",
   "/mockup.html",
   "/mockup.css",

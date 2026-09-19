@@ -1,0 +1,270 @@
+:root {
+  --focus-ring: 0 0 0 3px oklch(0.65 0.16 27 / 0.28);
+  --shadow-surface: 0 1px 2px oklch(0.16 0.025 258 / 0.06);
+  --rail-glass: oklch(0.15 0.035 258 / 0.96);
+}
+
+::selection {
+  color: white;
+  background: var(--brand);
+}
+
+button,
+a,
+input,
+select {
+  transition:
+    color 170ms var(--ease-out),
+    background-color 170ms var(--ease-out),
+    border-color 170ms var(--ease-out),
+    box-shadow 170ms var(--ease-out),
+    transform 170ms var(--ease-out);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.brand-mark {
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.18),
+    0 2px 6px oklch(0.12 0.03 258 / 0.16);
+}
+
+.channel-header,
+.mock-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 68px;
+  background: var(--rail-glass);
+  box-shadow: inset 0 -1px 0 oklch(1 0 0 / 0.08);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.channel-header nav,
+.mock-header nav {
+  gap: 4px;
+  padding: 4px;
+  background: oklch(1 0 0 / 0.045);
+  border: 1px solid oklch(1 0 0 / 0.075);
+  border-radius: 12px;
+}
+
+.channel-header nav a,
+.mock-header nav a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 13px;
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.channel-header nav a:hover,
+.mock-header nav a:hover {
+  color: white;
+  background: oklch(1 0 0 / 0.09);
+}
+
+.channel-header nav a.is-active,
+.mock-header nav a.is-active {
+  color: white;
+  background: var(--brand);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.18);
+}
+
+.channel-source-state,
+.mock-source-state {
+  min-height: 32px;
+  padding: 0 10px;
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 999px;
+}
+
+.channel-source-state.is-ready,
+.mock-source-state.is-ready {
+  background: oklch(0.59 0.13 153 / 0.1);
+  border-color: oklch(0.7 0.12 153 / 0.22);
+}
+
+.channel-player-panel,
+.channel-browser,
+.radar-main,
+.radar-side__panel,
+.recording-row,
+.schedule-surface,
+.settings-surface {
+  box-shadow: var(--shadow-surface);
+}
+
+.channel-stage,
+.radar-hero,
+.recording-visual,
+.preview-frame {
+  border-radius: 13px;
+}
+
+.channel-stage::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  background:
+    linear-gradient(
+      180deg,
+      oklch(0.1 0.025 258 / 0.42),
+      oklch(0.1 0.025 258 / 0.78)
+    ),
+    url("/images/home-arsenal-champions-poster.webp") center 32% / cover
+      no-repeat;
+  filter: saturate(0.6);
+}
+
+.channel-stage video {
+  position: relative;
+  z-index: 1;
+}
+
+.channel-message {
+  background: oklch(0.1 0.02 258 / 0.5);
+}
+
+.radar-summary {
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.radar-summary > div {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 11px;
+  background: oklch(1 0 0 / 0.08);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+}
+
+.radar-summary strong {
+  font-size: 0.94rem;
+}
+
+.radar-summary span {
+  margin-top: 0;
+  font-size: 0.66rem;
+}
+
+.channel-row,
+.recording-row,
+.radar-match,
+.home-live-entry,
+.home-entry-grid a,
+.home-entry-grid button {
+  will-change: transform;
+}
+
+.channel-row:hover {
+  background: var(--surface-raised);
+}
+
+.mobile-tabbar {
+  box-shadow: 0 -10px 28px oklch(0.16 0.025 258 / 0.08);
+}
+
+.mobile-tab {
+  position: relative;
+  min-height: 54px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+}
+
+.mobile-tab.is-active::before {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  background: var(--brand);
+  border-radius: 999px;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.channel-control,
+.player-icon,
+.icon-button,
+.row-action,
+.subtle-button,
+.text-button {
+  border-radius: 10px;
+}
+
+.channel-control:hover,
+.player-icon:hover,
+.icon-button:hover,
+.row-action:hover,
+.subtle-button:hover {
+  transform: translateY(-1px);
+}
+
+.channel-control:active,
+.player-icon:active,
+.icon-button:active,
+.row-action:active,
+.subtle-button:active {
+  transform: translateY(0);
+}
+
+.home-live-entry__meta {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  color: oklch(0.93 0.025 25);
+  background: oklch(1 0 0 / 0.1);
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+}
+
+.home-live-entry--football .home-live-entry__meta {
+  color: oklch(0.78 0.025 255);
+  background: oklch(1 0 0 / 0.055);
+}
+
+@media (max-width: 640px) {
+  .channel-header,
+  .mock-header {
+    min-height: 62px;
+  }
+
+  .channel-source-state,
+  .mock-source-state {
+    min-height: 30px;
+    padding-inline: 8px;
+    font-size: 0.65rem;
+  }
+
+  .mobile-tabbar {
+    padding-top: 6px;
+  }
+
+  .home-live-entry__meta {
+    display: none;
+  }
+}

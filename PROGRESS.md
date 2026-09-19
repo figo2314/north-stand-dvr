@@ -13,11 +13,21 @@ Updated: 2026-09-19
   shortcut and keeps that tab active on `/library.html`.
 - The recording player now matches the live player's convenience controls:
   picture-in-picture, remote-playback casting, and fullscreen when supported.
+- A shared `ui.css` layer now unifies navigation, focus states, media headers,
+  mobile navigation, and surface elevation across Home, watch, live, radar,
+  and lineup pages.
+- Navigation wording is consistent across the product: `看球` always links to
+  the dedicated watch library.
+- Media empty states now use the Arsenal background subtly, Home live entries
+  have balanced metadata chips, and Radar uses compact status pills instead of
+  a large-number metric row.
+- The recording player auto-hides its controls during playback and restores
+  them on pointer, touch, button, or keyboard activity.
 - Online and local items are visually separated as `线上回放` and `本地录像`.
 - The mobile and desktop home surfaces now share a compact control-console
   layout with above-the-fold status, live entries, `看球`, radar, and quick
   actions.
-- The `1.0.1` release builds on published commit
+- The `1.1.0` release builds on published commit
   `3accfe3 Clarify mobile replay library groups`.
 - The match radar mockup is available at http://127.0.0.1:4173/mockup.html.
 - Radar match actions now create or remove real scheduled fixtures through the
@@ -37,6 +47,7 @@ Updated: 2026-09-19
 
 - `npm test`: 43 tests passed.
 - `npm run test:ui`: 29 browser tests passed.
+- Impeccable detector: 0 structural warnings.
 - A real M3U full replay was captured for 60 seconds and retained for playback.
 - The VM deployment now uses Ubuntu's native FFmpeg through
   `deploy/ffmpeg-host.sh`; the static glibc build was confirmed to crash only

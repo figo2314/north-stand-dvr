@@ -124,6 +124,20 @@ test("keeps the player mask enabled and the layout inside the viewport", async (
       "[data-player-pip], [data-player-cast], [data-player-fullscreen]"
     )
   ).toHaveCount(3);
+  const playerShell = page.locator(".player-shell");
+  await page.evaluate(() => {
+    const video = document.querySelector("[data-video]");
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      get: () => false
+    });
+    video.dispatchEvent(new Event("play"));
+  });
+  await expect(playerShell).toHaveClass(/is-controls-hidden/, {
+    timeout: 4_000
+  });
+  await page.locator("[data-video-stage]").dispatchEvent("pointermove");
+  await expect(playerShell).not.toHaveClass(/is-controls-hidden/);
   await expect(page.locator("[data-score-shield]")).toBeVisible();
   await page.locator("[data-player-close]").click();
 
@@ -603,6 +617,12 @@ test("channel page renders non-football groups and searches channels", async ({
   });
 
   await page.goto("/channels.html", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.locator('.channel-header nav a[href="/library.html"]')
+  ).toContainText("看球");
+  await expect(
+    page.locator('.mobile-tab[href="/library.html"]')
+  ).toContainText("看球");
   await expect(page.getByRole("button", { name: /全部 3/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "预检列表" })).toBeVisible();
   await page.getByRole("button", { name: /全部 3/ }).click();
@@ -1057,6 +1077,9 @@ test("PWA manifest and service worker are available", async ({ page }) => {
   expect(manifest.name).toBe("北看台");
   expect(manifest.display).toBe("standalone");
   expect(manifest.shortcuts).toHaveLength(4);
+  expect(manifest.shortcuts).toContainEqual(
+    expect.objectContaining({ name: "看球", url: "/library.html" })
+  );
 
   await page.goto("/#home", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(async () => {

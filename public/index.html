@@ -9,6 +9,7 @@
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/ui.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -45,10 +46,10 @@
             <i data-lucide="music-2"></i>
             <span data-music-label>播放队歌</span>
           </button>
-          <button class="nav-item is-active" type="button" data-view="home">
+          <a class="nav-item" href="/library.html" data-library-nav>
             <i data-lucide="library-big"></i>
-            <span>待看录像</span>
-          </button>
+            <span>看球</span>
+          </a>
           <button class="nav-item" type="button" data-view="schedule">
             <i data-lucide="calendar-clock"></i>
             <span>录制日程</span>
@@ -197,6 +198,7 @@
                   <span></span>
                   LIVE
                 </span>
+                <span class="home-live-entry__meta">默认 · 1080P</span>
                 <span class="home-live-entry__icon">
                   <i data-lucide="tv-minimal-play"></i>
                 </span>
@@ -215,6 +217,7 @@
                   <span></span>
                   FOOTBALL
                 </span>
+                <span class="home-live-entry__meta">赛事 · 回放</span>
                 <span class="home-live-entry__icon">
                   <i data-lucide="circle-play"></i>
                 </span>
@@ -1116,7 +1119,11 @@
           </button>
         </div>
         <div class="preview-frame">
-          <img data-preview-image alt="录制中的实时画面" />
+          <img
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+            data-preview-image
+            alt="录制中的实时画面"
+          />
         </div>
         <p class="preview-caption" data-preview-caption>正在等待第一帧画面…</p>
         <div class="dialog-actions">

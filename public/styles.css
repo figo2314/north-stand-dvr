@@ -1081,11 +1081,13 @@ main {
 
 .meter-track span {
   display: block;
-  width: 0;
+  width: 100%;
   height: 100%;
   background: var(--amber);
   border-radius: inherit;
-  transition: width 250ms var(--ease-out);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 250ms var(--ease-out);
 }
 
 .status-list {
@@ -1460,11 +1462,13 @@ main {
 
 .schedule-progress__track span {
   display: block;
-  width: var(--progress);
+  width: 100%;
   height: 100%;
   background: var(--brand);
   border-radius: inherit;
-  transition: width 700ms linear;
+  transform: scaleX(var(--progress-scale, 0));
+  transform-origin: left;
+  transition: transform 700ms linear;
 }
 
 .schedule-progress__meta {
@@ -2359,11 +2363,7 @@ main {
   width: var(--mask-width, 37%);
   height: var(--mask-height, 11%);
   background: var(--mask-color, #05070a);
-  transition:
-    inset 150ms var(--ease-out),
-    width 150ms var(--ease-out),
-    height 150ms var(--ease-out),
-    opacity 170ms var(--ease-out);
+  transition: opacity 170ms var(--ease-out);
 }
 
 .score-shield.is-hidden {
@@ -2408,6 +2408,15 @@ main {
 .player-controls {
   padding: 8px 16px 13px;
   background: oklch(0.13 0.02 258);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.player-shell.is-controls-hidden .player-controls {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
 }
 
 .timeline-wrap {
@@ -4608,12 +4617,12 @@ body[data-active-view="home"]:not(.is-home-library) .mobile-bar .mobile-music-to
   }
 
   .control-cluster {
-    gap: 4px;
+    gap: 2px;
   }
 
   .player-icon {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
   }
 
   .player-time {

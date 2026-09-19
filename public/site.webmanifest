@@ -20,9 +20,9 @@
       "url": "/channels.html"
     },
     {
-      "name": "待看录像",
-      "short_name": "录像库",
-      "url": "/#home"
+      "name": "看球",
+      "short_name": "看球",
+      "url": "/library.html"
     },
     {
       "name": "录制日程",

@@ -10,6 +10,7 @@
     view: "home",
     activeRecording: null,
     playerHls: null,
+    playerControlsTimer: null,
     progressTimer: null,
     lastSavedProgress: 0,
     maskDraft: null,
@@ -1011,11 +1012,11 @@
       const usedPercent = disk.totalBytes
         ? Math.min(100, Math.max(0, (disk.usedBytes / disk.totalBytes) * 100))
         : 0;
-      $("[data-disk-bar]").style.width = `${usedPercent}%`;
+      $("[data-disk-bar]").style.transform = `scaleX(${usedPercent / 100})`;
     } else {
       $("[data-free-space]").textContent = health.diskError ? "目录不可用" : "无法读取";
       $("[data-disk-total]").textContent = "";
-      $("[data-disk-bar]").style.width = "0%";
+      $("[data-disk-bar]").style.transform = "scaleX(0)";
     }
 
     const ffmpegNode = $("[data-ffmpeg-state]");
@@ -1187,7 +1188,10 @@
                 ? `
                   <div class="schedule-progress">
                     <div class="schedule-progress__track">
-                      <span style="--progress:${progressPercent}%"></span>
+                      <span style="--progress-scale:${Math.min(
+                        1,
+                        Math.max(0, progressPercent / 100)
+                      )}"></span>
                     </div>
                     <div class="schedule-progress__meta">
                       <span>${escapeHtml(
@@ -1618,6 +1622,8 @@
     const panel = $('[data-view-panel="home"]');
     panel.hidden = false;
     panel.classList.add("is-active", "is-mobile-library");
+    $("[data-library-nav]")?.classList.add("is-active");
+    $("[data-library-nav]")?.setAttribute("aria-current", "page");
 
     for (const button of $$("[data-view]")) {
       button.classList.toggle("is-active", button.dataset.view === "home");
@@ -1641,6 +1647,8 @@
     }
     app.view = view;
     document.body.dataset.activeView = view;
+    $("[data-library-nav]")?.classList.remove("is-active");
+    $("[data-library-nav]")?.removeAttribute("aria-current");
     if (view === "home") {
       $('[data-view-panel="home"]')?.classList.remove("is-mobile-library");
       document.body.classList.remove("is-home-library");
@@ -1929,6 +1937,8 @@
     $("[data-player-reveal]").hidden = isChannelReplay;
     message.hidden = true;
     layer.hidden = false;
+    shell.classList.remove("is-controls-hidden");
+    showPlayerControls({ autoHide: false });
     if (window.history.state?.overlay !== "player") {
       window.history.pushState(
         { ...(window.history.state || {}), overlay: "player" },
@@ -1969,7 +1979,8 @@
         }
         message.hidden = false;
         message.querySelector("strong").textContent = "回放暂时无法播放";
-        message.querySelector("p").textContent = "这条回放线路可能已经下线，请回到待看录像重新检测。";
+        message.querySelector("p").textContent =
+          "这条回放线路可能已经下线，请回到看球页重新检测。";
       });
     } else {
       video.src = recording.mediaUrl;
@@ -1994,6 +2005,7 @@
     video.removeAttribute("src");
     video.load();
     $("[data-player-layer]").hidden = true;
+    $(".player-shell")?.classList.remove("is-controls-hidden");
     if (window.history.state?.overlay === "player") {
       window.history.replaceState(
         { ...(window.history.state || {}), overlay: null },
@@ -2005,6 +2017,8 @@
     app.activeRecording = null;
     window.clearInterval(app.progressTimer);
     app.progressTimer = null;
+    window.clearTimeout(app.playerControlsTimer);
+    app.playerControlsTimer = null;
     if (app.view === "home" && !app.homeMusicUserPaused) {
       playHomeMusic();
     }
@@ -2080,6 +2094,49 @@
       video.muted || video.volume === 0 ? "volume-x" : "volume-2"
     }"></i>`;
     refreshIcons();
+  }
+
+  function showPlayerControls({ autoHide = true } = {}) {
+    const shell = $(".player-shell");
+    if (!shell) {
+      return;
+    }
+    shell.classList.remove("is-controls-hidden");
+    window.clearTimeout(app.playerControlsTimer);
+    const video = $("[data-video]");
+    const message = $("[data-player-message]");
+    if (autoHide && !video.paused && message.hidden) {
+      app.playerControlsTimer = window.setTimeout(() => {
+        if (!video.paused && message.hidden) {
+          shell.classList.add("is-controls-hidden");
+        }
+      }, 2_800);
+    }
+  }
+
+  function togglePlayerPlayback() {
+    const video = $("[data-video]");
+    if (video.paused) {
+      video.play().catch(() => {
+        $("[data-player-message]").hidden = false;
+      });
+    } else {
+      video.pause();
+    }
+  }
+
+  async function togglePlayerFullscreen() {
+    const stage = $("[data-video-stage]");
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await stage.requestFullscreen?.();
+      }
+      showPlayerControls();
+    } catch (error) {
+      toast("无法进入全屏", error.message, "error");
+    }
   }
 
   function askReveal(recording) {
@@ -2704,14 +2761,8 @@
       }
 
       if (event.target.closest("[data-player-toggle]")) {
-        const video = $("[data-video]");
-        if (video.paused) {
-          video.play().catch(() => {
-            $("[data-player-message]").hidden = false;
-          });
-        } else {
-          video.pause();
-        }
+        togglePlayerPlayback();
+        showPlayerControls();
         return;
       }
 
@@ -2750,12 +2801,7 @@
       }
 
       if (event.target.closest("[data-player-fullscreen]")) {
-        const stage = $("[data-video-stage]");
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else {
-          stage.requestFullscreen?.();
-        }
+        togglePlayerFullscreen();
       }
     });
 
@@ -2829,13 +2875,21 @@
     window.addEventListener("pagehide", saveHomeMusicState);
 
     const video = $("[data-video]");
+    const stage = $("[data-video-stage]");
+    const shell = $(".player-shell");
     video.addEventListener("loadedmetadata", updatePlayerUI);
     video.addEventListener("timeupdate", () => {
       updatePlayerUI();
       savePlayerProgress();
     });
-    video.addEventListener("play", updatePlayerUI);
-    video.addEventListener("pause", updatePlayerUI);
+    video.addEventListener("play", () => {
+      updatePlayerUI();
+      showPlayerControls();
+    });
+    video.addEventListener("pause", () => {
+      updatePlayerUI();
+      showPlayerControls({ autoHide: false });
+    });
     video.addEventListener("ended", () => {
       updatePlayerUI();
       const button = $("[data-player-reveal]");
@@ -2846,6 +2900,22 @@
     });
     video.addEventListener("error", () => {
       $("[data-player-message]").hidden = false;
+      showPlayerControls({ autoHide: false });
+    });
+
+    for (const eventName of ["pointermove", "touchstart"]) {
+      stage.addEventListener(eventName, () => showPlayerControls());
+    }
+    stage.addEventListener("click", (event) => {
+      if (event.target.closest("button, input, select")) {
+        return;
+      }
+      if (shell.classList.contains("is-controls-hidden")) {
+        showPlayerControls();
+        return;
+      }
+      togglePlayerPlayback();
+      showPlayerControls();
     });
 
     $("[data-player-timeline]").addEventListener("input", (event) => {
@@ -2881,13 +2951,33 @@
         closePlayer();
       }
       if (
-        event.code === "Space" &&
-        !$("[data-player-layer]").hidden &&
-        !["INPUT", "BUTTON"].includes(document.activeElement?.tagName)
+        $("[data-player-layer]").hidden ||
+        ["INPUT", "BUTTON", "SELECT"].includes(document.activeElement?.tagName)
       ) {
-        event.preventDefault();
-        $("[data-player-toggle]").click();
+        return;
       }
+      const video = $("[data-video]");
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePlayerPlayback();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        video.currentTime = Math.max(0, video.currentTime - 10);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        video.currentTime = Math.min(
+          video.duration || Infinity,
+          video.currentTime + 30
+        );
+      } else if (event.key.toLowerCase() === "m") {
+        video.muted = !video.muted;
+        updatePlayerUI();
+      } else if (event.key.toLowerCase() === "f") {
+        togglePlayerFullscreen();
+      } else {
+        return;
+      }
+      showPlayerControls();
     });
 
     window.setInterval(async () => {

@@ -422,7 +422,8 @@
 
     if (current) {
       title.textContent = `正在直播：${current.home} vs ${current.away}`;
-      copy.textContent = "比赛仍在进行，比分和赛果保持隐藏。可以先预录，结束后自动进入待看录像。";
+      copy.textContent =
+        "比赛仍在进行，比分和赛果保持隐藏。可以先预录，结束后自动进入看球页。";
     } else if (next) {
       title.textContent = `下一场：${next.home} vs ${next.away}`;
       copy.textContent = `${formatDate(next.kickoffAt)} ${String(next.kickoffAt.getHours()).padStart(
@@ -434,7 +435,7 @@
       )}。`;
     } else {
       title.textContent = "当前没有待开赛的比赛";
-      copy.textContent = "已结束的条目可以直接录制回放，完成后会进入待看录像。";
+      copy.textContent = "已结束的条目可以直接录制回放，完成后会进入看球页。";
     }
     refreshIcons();
   }
