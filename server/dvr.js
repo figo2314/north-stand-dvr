@@ -102,6 +102,66 @@ function buildFfmpegArgs({
   return args;
 }
 
+function buildFaststartArgs(inputPath, outputPath) {
+  return [
+    "-hide_banner",
+    "-loglevel",
+    "warning",
+    "-y",
+    "-i",
+    inputPath,
+    "-map",
+    "0",
+    "-c",
+    "copy",
+    "-movflags",
+    "+faststart",
+    "-f",
+    "mp4",
+    outputPath
+  ];
+}
+
+async function finalizeRecordingFile(outputPath) {
+  if (!ffmpegPath || !fs.existsSync(outputPath)) {
+    return outputPath;
+  }
+  const temporaryPath = `${outputPath}.faststart.tmp.mp4`;
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(
+        ffmpegPath,
+        buildFaststartArgs(outputPath, temporaryPath),
+        {
+          windowsHide: true,
+          stdio: ["ignore", "ignore", "pipe"]
+        }
+      );
+      let stderr = "";
+      child.stderr.on("data", (chunk) => {
+        stderr = `${stderr}${chunk.toString()}`.slice(-5000);
+      });
+      child.once("error", reject);
+      child.once("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(stderr || `FFmpeg faststart exited with code ${code}`));
+        }
+      });
+    });
+    const fixedStats = fs.statSync(temporaryPath);
+    if (!fixedStats.isFile() || fixedStats.size <= 0) {
+      throw new Error("faststart output is empty");
+    }
+    fs.rmSync(outputPath, { force: true });
+    fs.renameSync(temporaryPath, outputPath);
+  } catch {
+    fs.rmSync(temporaryPath, { force: true });
+  }
+  return outputPath;
+}
+
 function resolveRecordingPath(settings, fixture) {
   const root = path.resolve(process.cwd(), settings.recordingDir || "./recordings");
   const date = new Date(fixture.kickoffAt);
@@ -225,7 +285,7 @@ async function startRecording({
     finish(() => onError?.(error));
   });
 
-  child.once("close", (code, signal) => {
+  child.once("close", async (code, signal) => {
     const stats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
     if (job.discard) {
       if (stats) {
@@ -235,10 +295,12 @@ async function startRecording({
       return;
     }
     if (code === 0 && stats?.size > 0) {
+      await finalizeRecordingFile(outputPath);
+      const finalizedStats = fs.statSync(outputPath);
       finish(() =>
         onComplete?.({
           outputPath,
-          sizeBytes: stats.size,
+          sizeBytes: finalizedStats.size,
           durationSeconds: Math.round(job.progressSeconds || durationSeconds)
         })
       );
@@ -343,6 +405,7 @@ async function scanLibrary(settings, existingRecordings) {
 
 module.exports = {
   buildFfmpegArgs,
+  buildFaststartArgs,
   buildMaskFilter,
   getActiveJobs,
   getRecordingWindow,

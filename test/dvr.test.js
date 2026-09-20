@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   buildFfmpegArgs,
+  buildFaststartArgs,
   buildMaskFilter,
   getRecordingWindow,
   resolveCaptureDurationSeconds,
@@ -134,4 +135,13 @@ test("buildFfmpegArgs can limit replay input duration before opening it", () => 
 
   assert.ok(args.indexOf("-t") < args.indexOf("-i"));
   assert.equal(args[args.indexOf("-t") + 1], "60");
+});
+
+test("buildFaststartArgs remuxes a completed recording for browser playback", () => {
+  const args = buildFaststartArgs("match.mp4", "match.faststart.tmp.mp4");
+
+  assert.equal(args[args.indexOf("-c") + 1], "copy");
+  assert.equal(args[args.indexOf("-movflags") + 1], "+faststart");
+  assert.equal(args[args.indexOf("-f") + 1], "mp4");
+  assert.equal(args.at(-1), "match.faststart.tmp.mp4");
 });

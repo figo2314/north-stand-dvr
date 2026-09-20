@@ -1,6 +1,6 @@
 {
   "name": "north-stand-dvr",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Local-first, spoiler-safe football recording library.",
   "main": "server/index.js",

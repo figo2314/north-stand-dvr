@@ -316,6 +316,88 @@ test("radar starts a replay recording for an ended match", async ({ page }) => {
   });
 });
 
+test("radar replay player exposes a seek bar", async ({ page }) => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const group = `体育-昨天${String(yesterday.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(yesterday.getDate()).padStart(2, "0")}`;
+
+  await page.route("**/api/state", async (route) => {
+    await route.fulfill({
+      json: {
+        settings: { m3uUrl: "https://example.com/source.m3u" },
+        fixtures: []
+      }
+    });
+  });
+  await page.route("**/api/sources/m3u", async (route) => {
+    await route.fulfill({
+      json: {
+        count: 1,
+        channels: [
+          {
+            id: "radar-watch-replay",
+            name: "西甲 巴塞罗那VS皇家马德里 全场回放 03:15",
+            group,
+            streamUrl: "https://example.com/replay.m3u8"
+          }
+        ]
+      }
+    });
+  });
+  await page.route("**/api/live/proxy*", async (route) => {
+    const target = new URL(route.request().url()).searchParams.get("url") || "";
+    if (/segment/i.test(target)) {
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/vnd.apple.mpegurl",
+      body: [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        "#EXT-X-TARGETDURATION:10",
+        "#EXT-X-MEDIA-SEQUENCE:0",
+        "#EXTINF:10.0,",
+        "/api/live/proxy?url=segment-0.ts",
+        "#EXT-X-ENDLIST"
+      ].join("\n")
+    });
+  });
+
+  await page.goto("/mockup.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-radar-league]").selectOption("all");
+  await page.getByRole("button", { name: "看回放" }).click();
+
+  await expect(page.locator("[data-live-dialog]")).toBeVisible();
+  await expect(page.locator("[data-live-mode]")).toContainText(
+    "可拖动进度"
+  );
+  await expect(page.locator("[data-live-replay-progress]")).toBeVisible();
+  await expect(page.locator("[data-live-seek]")).toBeVisible();
+  await page.evaluate(() => {
+    const video = document.querySelector("[data-live-video]");
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      get: () => 100
+    });
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get: () => window.__radarSeekTime || 0,
+      set: (value) => {
+        window.__radarSeekTime = value;
+      }
+    });
+    video.dispatchEvent(new Event("durationchange"));
+    const seek = document.querySelector("[data-live-seek]");
+    seek.value = "25";
+    seek.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(await page.evaluate(() => window.__radarSeekTime)).toBe(25);
+});
+
 test("radar filters and searches matches", async ({ page }) => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1434,10 +1516,22 @@ test("fullscreen playback collapses controls until pointer activity", async ({
   await page.goto("/football.html", { waitUntil: "domcontentloaded" });
   await page.locator("[data-channel-fullscreen]").click();
   await page.waitForFunction(() => Boolean(document.fullscreenElement));
+  await page.waitForTimeout(3_500);
 
   const panel = page.locator(".channel-player-panel");
   await page.evaluate(() => {
-    document.querySelector("[data-channel-message]").hidden = true;
+    const message = document.querySelector("[data-channel-message]");
+    Object.defineProperty(message, "hidden", {
+      configurable: true,
+      get: () => true,
+      set: () => {}
+    });
+    const video = document.querySelector("[data-channel-video]");
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      get: () => false
+    });
+    video.dispatchEvent(new Event("play"));
     document
       .querySelector(".channel-player-panel")
       .dispatchEvent(new PointerEvent("pointermove", { bubbles: true }));

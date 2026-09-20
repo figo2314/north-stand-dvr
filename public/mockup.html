@@ -197,7 +197,7 @@
       <div class="live-player-shell">
         <header class="live-player-header">
           <div>
-            <p class="day-line">直播直看 · 高清优先</p>
+            <p class="day-line" data-live-mode>直播直看 · 高清优先</p>
             <h2 data-live-title>直播</h2>
           </div>
           <button class="icon-button" type="button" data-live-close aria-label="关闭直播">
@@ -216,28 +216,43 @@
         </div>
 
         <div class="live-player-controls">
-          <button class="live-control" type="button" data-live-toggle aria-label="播放或暂停">
-            <i data-lucide="pause"></i>
-          </button>
-          <button class="live-control" type="button" data-live-mute aria-label="静音">
-            <i data-lucide="volume-2"></i>
-          </button>
-          <button class="live-control" type="button" data-live-mask aria-label="比分遮罩">
-            <i data-lucide="scan-line"></i>
-          </button>
-          <label class="live-quality">
-            <span>画质</span>
-            <select data-live-quality>
-              <option value="-1">自动</option>
-            </select>
-          </label>
-          <div class="live-stats" aria-live="polite">
-            <span data-live-speed>速度检测中</span>
-            <span data-live-buffer>缓冲 0 秒</span>
+          <div class="live-replay-progress" data-live-replay-progress hidden>
+            <span data-live-current>00:00</span>
+            <input
+              type="range"
+              min="0"
+              max="0"
+              step="0.1"
+              value="0"
+              data-live-seek
+              aria-label="回放进度"
+            />
+            <span data-live-duration>00:00</span>
           </div>
-          <button class="live-control" type="button" data-live-fullscreen aria-label="全屏">
-            <i data-lucide="maximize"></i>
-          </button>
+          <div class="live-control-row">
+            <button class="live-control" type="button" data-live-toggle aria-label="播放或暂停">
+              <i data-lucide="pause"></i>
+            </button>
+            <button class="live-control" type="button" data-live-mute aria-label="静音">
+              <i data-lucide="volume-2"></i>
+            </button>
+            <button class="live-control" type="button" data-live-mask aria-label="比分遮罩">
+              <i data-lucide="scan-line"></i>
+            </button>
+            <label class="live-quality">
+              <span>画质</span>
+              <select data-live-quality>
+                <option value="-1">自动</option>
+              </select>
+            </label>
+            <div class="live-stats" aria-live="polite">
+              <span data-live-speed>速度检测中</span>
+              <span data-live-buffer>缓冲 0 秒</span>
+            </div>
+            <button class="live-control" type="button" data-live-fullscreen aria-label="全屏">
+              <i data-lucide="maximize"></i>
+            </button>
+          </div>
         </div>
       </div>
     </dialog>

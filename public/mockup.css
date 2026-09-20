@@ -698,13 +698,40 @@
 }
 
 .live-player-controls {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
+  display: grid;
   gap: 8px;
+  min-height: 58px;
   padding: 10px 14px;
   background: var(--rail);
   border-top: 1px solid oklch(1 0 0 / 0.08);
+}
+
+.live-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-replay-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  color: oklch(0.78 0.02 255);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-replay-progress[hidden] {
+  display: none;
+}
+
+.live-replay-progress input {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
 }
 
 .live-control {
@@ -761,7 +788,7 @@
 }
 
 @media (max-width: 680px) {
-  .live-player-controls {
+  .live-control-row {
     flex-wrap: wrap;
   }
 

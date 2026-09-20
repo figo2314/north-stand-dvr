@@ -51,6 +51,7 @@
     query: "",
     hls: null,
     liveMatch: null,
+    liveIsReplay: false,
     liveStatsTimer: null,
     settings: null,
     scheduled: readScheduledMatches()
@@ -612,6 +613,33 @@
     return "速度检测中";
   }
 
+  function formatPlaybackTime(value) {
+    const total = Math.max(0, Math.floor(Number(value) || 0));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return hours
+      ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+      : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function updateLiveProgress() {
+    const progress = $("[data-live-replay-progress]");
+    progress.hidden = !app.liveIsReplay;
+    if (!app.liveIsReplay) {
+      return;
+    }
+    const video = $("[data-live-video]");
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const current = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    const seek = $("[data-live-seek]");
+    seek.max = String(duration);
+    seek.value = String(Math.min(current, duration || current));
+    seek.disabled = !duration;
+    $("[data-live-current]").textContent = formatPlaybackTime(current);
+    $("[data-live-duration]").textContent = formatPlaybackTime(duration);
+  }
+
   function applyLiveMask() {
     const mask = app.settings?.mask || {};
     const shield = $("[data-live-shield]");
@@ -678,6 +706,7 @@
     app.hls?.destroy();
     app.hls = null;
     app.liveMatch = null;
+    app.liveIsReplay = false;
     const video = $("[data-live-video]");
     video.pause();
     video.removeAttribute("src");
@@ -692,6 +721,12 @@
     }
     destroyLivePlayer();
     app.liveMatch = match;
+    app.liveIsReplay =
+      match.kind === "replay" || match.status === "ended";
+    $("[data-live-mode]").textContent = app.liveIsReplay
+      ? "回放播放 · 可拖动进度"
+      : "直播直看 · 高清优先";
+    $("[data-live-replay-progress]").hidden = !app.liveIsReplay;
     $("[data-live-title]").textContent = `${match.home} vs ${match.away} · ${
       match.feed || "中文解说"
     }${match.commentator ? ` · ${match.commentator}` : ""}`;
@@ -708,15 +743,25 @@
     const source = `/api/live/proxy?url=${encodeURIComponent(match.streamUrl)}`;
 
     if (window.Hls?.isSupported()) {
-      const hls = new window.Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        liveSyncDurationCount: 3,
-        maxBufferLength: 30,
-        backBufferLength: 30,
-        maxLiveSyncPlaybackRate: 1.5,
-        abrEwmaDefaultEstimate: 8_000_000
-      });
+      const hls = new window.Hls(
+        app.liveIsReplay
+          ? {
+              enableWorker: true,
+              lowLatencyMode: false,
+              maxBufferLength: 90,
+              backBufferLength: 120,
+              abrEwmaDefaultEstimate: 8_000_000
+            }
+          : {
+              enableWorker: true,
+              lowLatencyMode: true,
+              liveSyncDurationCount: 3,
+              maxBufferLength: 30,
+              backBufferLength: 30,
+              maxLiveSyncPlaybackRate: 1.5,
+              abrEwmaDefaultEstimate: 8_000_000
+            }
+      );
       app.hls = hls;
       hls.loadSource(source);
       hls.attachMedia(video);
@@ -727,6 +772,7 @@
         }
         video.play().catch(() => {});
         updateLiveStats();
+        updateLiveProgress();
       });
       hls.on(window.Hls.Events.LEVEL_SWITCHED, updateLiveStats);
       hls.on(window.Hls.Events.ERROR, (_, data) => {
@@ -760,6 +806,7 @@
         message.hidden = true;
         updateLiveButton();
         updateLiveStats();
+        updateLiveProgress();
       },
       { once: true }
     );
@@ -770,6 +817,7 @@
     const video = $("[data-live-video]");
     if (video.paused) {
       if (
+        !app.liveIsReplay &&
         app.hls?.liveSyncPosition &&
         Math.abs(video.currentTime - app.hls.liveSyncPosition) > 20
       ) {
@@ -853,6 +901,19 @@
   $("[data-live-dialog]").addEventListener("close", destroyLivePlayer);
   $("[data-live-video]").addEventListener("play", updateLiveButton);
   $("[data-live-video]").addEventListener("pause", updateLiveButton);
+  for (const eventName of ["loadedmetadata", "durationchange", "timeupdate"]) {
+    $("[data-live-video]").addEventListener(eventName, updateLiveProgress);
+  }
+  $("[data-live-seek]").addEventListener("input", (event) => {
+    if (!app.liveIsReplay) {
+      return;
+    }
+    const video = $("[data-live-video]");
+    if (Number.isFinite(video.duration)) {
+      video.currentTime = Number(event.target.value);
+      updateLiveProgress();
+    }
+  });
 
   document.addEventListener("input", (event) => {
     if (!event.target.matches("[data-radar-search]")) {

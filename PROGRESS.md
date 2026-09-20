@@ -23,11 +23,15 @@ Updated: 2026-09-19
   a large-number metric row.
 - The recording player auto-hides its controls during playback and restores
   them on pointer, touch, button, or keyboard activity.
+- Radar replay playback now exposes a seekable VOD progress bar while live
+  playback keeps its live-oriented controls.
+- Completed recordings are remuxed with MP4 `faststart` before being marked
+  ready, preventing browsers from scanning fragmented files during playback.
 - Online and local items are visually separated as `线上回放` and `本地录像`.
 - The mobile and desktop home surfaces now share a compact control-console
   layout with above-the-fold status, live entries, `看球`, radar, and quick
   actions.
-- The `1.1.0` release builds on published commit
+- The `1.1.1` release builds on published commit
   `3accfe3 Clarify mobile replay library groups`.
 - The match radar mockup is available at http://127.0.0.1:4173/mockup.html.
 - Radar match actions now create or remove real scheduled fixtures through the
